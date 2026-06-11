@@ -1,0 +1,167 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{amsmath} % For \text in math mode
+
+\begin{document}
+\section{Modelado de las órdenes médicas}
+
+La frecuencia con la que se generan nuevas órdenes médicas y el caudal
+indicado en ellas dependen del estado clínico del paciente. Pacientes que
+presentan un cuadro crítico requieren revisiones frecuentes y ajustes
+continuos de la infusión, mientras que pacientes estables suelen mantener la
+misma configuración durante períodos más prolongados.
+
+Con el objetivo de representar este comportamiento, se define el parámetro
+\(k\), denominado grado de criticidad del paciente:
+
+\[
+k \in [0,1]
+\]
+
+donde:
+
+\begin{itemize}
+\item \(k=1\): paciente crítico.
+\item \(k=0\): paciente estable.
+\end{itemize}
+
+Este parámetro influye tanto en el tiempo transcurrido entre órdenes médicas
+como en el caudal indicado por cada orden.
+
+\subsection{Tiempo entre órdenes médicas}
+
+Se define la variable aleatoria discreta \(T\) como el tiempo transcurrido,
+expresado en horas, entre dos órdenes médicas consecutivas.
+
+\[
+T \in \{2,4,6,8,12\}
+\]
+
+Para modelar distintos estados clínicos se definen dos distribuciones
+extremas.
+
+\subsubsection*{Distribución crítica}
+
+\[
+\begin{array}{c|c}
+t \;(\text{horas}) & P_C(T=t) \\
+\hline
+2  & 0.50 \\
+4  & 0.30 \\
+6  & 0.15 \\
+8  & 0.05 \\
+12 & 0.00
+\end{array}
+\]
+
+\subsubsection*{Distribución estable}
+
+\[
+\begin{array}{c|c}
+t \;(\text{horas}) & P_E(T=t) \\
+\hline
+2  & 0.00 \\
+4  & 0.05 \\
+6  & 0.15 \\
+8  & 0.40 \\
+12 & 0.40
+\end{array}
+\]
+
+La distribución general queda definida por:
+
+\[
+P(T=t \mid k)
+=
+k\,P_C(T=t)
++
+(1-k)\,P_E(T=t)
+\]
+
+El tiempo promedio entre órdenes médicas es:
+
+\[
+E[T\mid k]
+=
+\sum_{t \in \{2,4,6,8,12\}}
+t\,P(T=t\mid k)
+\]
+
+\subsection{Caudal de infusión}
+
+Se define la variable aleatoria discreta \(C\) como el caudal indicado por
+una orden médica, expresado en mililitros por hora.
+
+\[
+C \in \{0,50,100,150,200\}
+\]
+
+El valor \(C=0\) representa la detención de la infusión.
+
+Al igual que para la variable \(T\), se definen dos distribuciones extremas.
+
+\subsubsection*{Distribución crítica}
+
+En pacientes críticos predominan los caudales elevados debido a la necesidad
+de una administración más intensiva de fluidos o medicación.
+
+\[
+\begin{array}{c|c}
+c \;(\text{ml/h}) & P_C(C=c) \\
+\hline
+0   & 0.00 \\
+50  & 0.10 \\
+100 & 0.20 \\
+150 & 0.40 \\
+200 & 0.30
+\end{array}
+\]
+
+\subsubsection*{Distribución estable}
+
+Para pacientes estables predominan los caudales reducidos y aumenta la
+probabilidad de emitir órdenes médicas que indiquen la suspensión de la
+infusión.
+
+\[
+\begin{array}{c|c}
+c \;(\text{ml/h}) & P_E(C=c) \\
+\hline
+0   & 0.30 \\
+50  & 0.35 \\
+100 & 0.20 \\
+150 & 0.10 \\
+200 & 0.05
+\end{array}
+\]
+
+La distribución general del caudal se define mediante:
+
+\[
+P(C=c \mid k)
+=
+k\,P_C(C=c)
++
+(1-k)\,P_E(C=c)
+\]
+
+Particularmente, para la suspensión de la infusión:
+
+\[
+P(C=0\mid k)
+=
+0.30(1-k)
+\]
+
+Por lo tanto, a medida que disminuye la criticidad del paciente aumenta la
+probabilidad de que una orden médica indique la finalización de la infusión.
+
+El caudal medio esperado viene dado por:
+
+\[
+E[C\mid k]
+=
+\sum_{c \in \{0,50,100,150,200\}}
+c\,P(C=c\mid k)
+\]
+\end{document}
