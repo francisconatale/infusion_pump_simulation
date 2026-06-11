@@ -1,8 +1,12 @@
 \documentclass{article}
-\usepackage{graphicx} % Required for inserting images
-\usepackage{amsmath} % For \text in math mode
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
 
 \begin{document}
+
 \section{Modelado de las órdenes médicas}
 
 La frecuencia con la que se generan nuevas órdenes médicas y el caudal
@@ -28,7 +32,7 @@ donde:
 Este parámetro influye tanto en el tiempo transcurrido entre órdenes médicas
 como en el caudal indicado por cada orden.
 
-\subsection{Tiempo entre órdenes médicas}
+\section{Tiempo entre órdenes médicas}
 
 Se define la variable aleatoria discreta \(T\) como el tiempo transcurrido,
 expresado en horas, entre dos órdenes médicas consecutivas.
@@ -40,7 +44,7 @@ T \in \{2,4,6,8,12\}
 Para modelar distintos estados clínicos se definen dos distribuciones
 extremas.
 
-\subsubsection*{Distribución crítica}
+\subsection*{Distribución crítica}
 
 \[
 \begin{array}{c|c}
@@ -54,7 +58,7 @@ t \;(\text{horas}) & P_C(T=t) \\
 \end{array}
 \]
 
-\subsubsection*{Distribución estable}
+\subsection*{Distribución estable}
 
 \[
 \begin{array}{c|c}
@@ -87,7 +91,7 @@ E[T\mid k]
 t\,P(T=t\mid k)
 \]
 
-\subsection{Caudal de infusión}
+\section{Caudal de infusión}
 
 Se define la variable aleatoria discreta \(C\) como el caudal indicado por
 una orden médica, expresado en mililitros por hora.
@@ -100,10 +104,12 @@ El valor \(C=0\) representa la detención de la infusión.
 
 Al igual que para la variable \(T\), se definen dos distribuciones extremas.
 
-\subsubsection*{Distribución crítica}
+\subsection*{Distribución para pacientes críticos}
 
 En pacientes críticos predominan los caudales elevados debido a la necesidad
-de una administración más intensiva de fluidos o medicación.
+de una administración más intensiva de fluidos o medicación. Por esta razón,
+la probabilidad de emitir órdenes médicas con caudal nulo es prácticamente
+inexistente.
 
 \[
 \begin{array}{c|c}
@@ -117,11 +123,13 @@ c \;(\text{ml/h}) & P_C(C=c) \\
 \end{array}
 \]
 
-\subsubsection*{Distribución estable}
+\subsection*{Distribución para pacientes estables}
 
-Para pacientes estables predominan los caudales reducidos y aumenta la
-probabilidad de emitir órdenes médicas que indiquen la suspensión de la
-infusión.
+Para pacientes estables, los ajustes de la terapia suelen ser poco
+frecuentes y los requerimientos de infusión son menores. En consecuencia,
+los caudales reducidos presentan una mayor probabilidad de ocurrencia y
+resulta más probable la emisión de órdenes médicas que indiquen la
+detención de la infusión (\(C=0\)).
 
 \[
 \begin{array}{c|c}
@@ -164,4 +172,122 @@ E[C\mid k]
 \sum_{c \in \{0,50,100,150,200\}}
 c\,P(C=c\mid k)
 \]
+
+\section{Generador DEVS de órdenes médicas}
+
+El generador utiliza las distribuciones definidas en las secciones
+anteriores para obtener el tiempo hasta la próxima orden médica y el
+caudal asociado a dicha orden.
+
+Sean
+
+\[
+Caudal(k)\sim P(C\mid k)
+\]
+
+y
+
+\[
+Tiempo(k)\sim P(T\mid k)
+\]
+
+las funciones generadoras obtenidas a partir de las distribuciones
+definidas previamente.
+
+El modelo DEVS atómico se define como:
+
+\[
+M=
+\langle
+X,S,Y,
+\delta_{int},
+\delta_{ext},
+\lambda,
+ta
+\rangle
+\]
+
+donde:
+
+\[
+X=\varnothing
+\]
+
+\[
+Y=
+\{
+((c,t),0)
+\mid
+c\in\{0,50,100,150,200\},
+\;
+t\in\{2,4,6,8,12\}
+\}
+\]
+
+\[
+S=
+\{
+(k,c,t)
+\mid
+k\in[0,1],
+\;
+c\in\{0,50,100,150,200\},
+\;
+t\in\{2,4,6,8,12\}
+\}
+\]
+
+La función de transición interna genera una nueva orden médica a partir del
+grado de criticidad actual:
+
+\[
+\delta_{int}(k,c,t)
+=
+\Bigl(
+k,
+Caudal(k),
+Tiempo(k)
+\Bigr)
+\]
+
+Al no poseer eventos externos:
+
+\[
+\delta_{ext}
+=
+\varnothing
+\]
+
+La función de salida emite el caudal y el tiempo asociados a la nueva orden
+médica:
+
+\[
+\lambda(k,c,t)
+=
+((c,t),0)
+\]
+
+El avance temporal queda determinado por el tiempo generado para la próxima
+orden:
+
+\[
+ta(k,c,t)
+=
+t
+\]
+
+Finalmente, el estado inicial se define como:
+
+\[
+s_0
+=
+\Bigl(
+k_0,
+Caudal(k_0),
+Tiempo(k_0)
+\Bigr)
+\]
+
+donde \(k_0\) representa el grado inicial de criticidad del paciente.
+
 \end{document}
