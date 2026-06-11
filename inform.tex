@@ -290,4 +290,120 @@ Tiempo(k_0)
 
 donde \(k_0\) representa el grado inicial de criticidad del paciente.
 
+\section{Sensor de flujo}
+
+El sensor de flujo representa el dispositivo encargado de medir el
+caudal real administrado por la bomba de infusión.
+
+De acuerdo con los requisitos del sistema, el sensor debe emitir una
+medición periódica cada segundo, informando el caudal actualmente
+administrado por el actuador de la bomba.
+
+El modelo DEVS atómico se define como:
+
+\[
+M=
+\langle
+X,S,Y,
+\delta_{int},
+\delta_{ext},
+\lambda,
+ta
+\rangle
+\]
+
+donde:
+
+\[
+X
+=
+\{
+(c,0)
+\mid
+c\in[0,200]
+\}
+\]
+
+\[
+Y
+=
+\{
+(c,0)
+\mid
+c\in[0,200]
+\}
+\]
+
+\[
+S
+=
+\{
+(c,\sigma)
+\mid
+c\in[0,200],
+\;
+\sigma\in\mathbb{R}_{0}^{+}
+\}
+\]
+
+El estado del modelo está dado por:
+
+\[
+s=(c,\sigma)
+\]
+
+donde \(c\) representa el último caudal recibido desde el actuador
+y \(\sigma\) el tiempo restante hasta la próxima medición.
+
+La transición externa actualiza el valor medido y programa la próxima
+emisión un segundo después:
+
+\[
+\delta_{ext}
+\bigl(
+(c,\sigma),
+e,
+(x,0)
+\bigr)
+=
+(x,1)
+\]
+
+La transición interna conserva el caudal actual y agenda una nueva
+medición para el siguiente segundo:
+
+\[
+\delta_{int}(c,\sigma)
+=
+(c,1)
+\]
+
+La función de salida emite la medición correspondiente al caudal
+actual:
+
+\[
+\lambda(c,\sigma)
+=
+(c,0)
+\]
+
+El avance temporal viene dado por:
+
+\[
+ta(c,\sigma)
+=
+\sigma
+\]
+
+Finalmente, el estado inicial se define como:
+
+\[
+s_0
+=
+(0,\infty)
+\]
+
+lo que indica que el sensor permanece pasivo hasta recibir la primera
+actualización de caudal proveniente del actuador.
+
 \end{document}
