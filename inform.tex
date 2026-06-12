@@ -2,262 +2,633 @@
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
 \usepackage{amsmath}
 \usepackage{amssymb}
+\usepackage{geometry}
+\usepackage{tikz}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{array}
+\geometry{margin=2.5cm}
+
+\usetikzlibrary{automata, positioning, arrows.meta, fit, backgrounds}
+
+\tikzset{
+  every state/.style={
+    draw, rounded corners=6pt,
+    minimum width=2.2cm, minimum height=0.75cm,
+    font=\small, align=center,
+    fill=gray!8
+  },
+  initial text={},
+  every edge/.style={draw, -{Stealth[length=5pt]}, font=\scriptsize},
+  loop above/.append style={looseness=5},
+  loop below/.append style={looseness=5},
+}
+
+\title{Modelos DEVS del sistema de bomba de infusión}
+\date{}
+
+% ── helpers ────────────────────────────────────────────────────────────────────
+\newcommand{\dint}{\delta_{\mathrm{int}}}
+\newcommand{\dext}{\delta_{\mathrm{ext}}}
+\newcommand{\ta}{\mathit{ta}}
 
 \begin{document}
 
-\section{Modelado de las órdenes médicas}
+\maketitle
 
-La frecuencia con la que se generan nuevas órdenes médicas y el caudal
-indicado en ellas dependen del estado clínico del paciente. Pacientes que
-presentan un cuadro crítico requieren revisiones frecuentes y ajustes
-continuos de la infusión, mientras que pacientes estables suelen mantener la
-misma configuración durante períodos más prolongados.
+\tableofcontents
+\newpage
 
-Con el objetivo de representar este comportamiento, se define el parámetro
-\(k\), denominado grado de criticidad del paciente:
+% ==============================================================================
+\section{Notación común}
 
-\[ k \in [0,1] \]
-
-donde:
+Cada modelo atómico DEVS se especifica mediante la tupla
+\[
+  M = \langle X,\; Y,\; S,\; \dint,\; \dext,\; \lambda,\; \ta \rangle.
+\]
+Se adoptan las siguientes convenciones a lo largo del documento:
 
 \begin{itemize}
-\item \(k=1\): paciente crítico.
-\item \(k=0\): paciente estable.
+  \item Los puertos de entrada y salida se distinguen con un índice entero
+        no negativo: $(v, p)$ donde $v$ es el valor y $p \in \mathbb{N}_0$
+        es el número de puerto.
+  \item En las transiciones externas, $e$ denota el tiempo transcurrido desde
+        la última transición.
+  \item $\mathbb{R}_0^+$ denota los reales no negativos incluyendo $\infty$.
+  \item Los estados pasivos utilizan $\sigma = \infty$ como avance temporal.
 \end{itemize}
 
-Este parámetro influye tanto en el tiempo transcurrido entre órdenes médicas
-como en el caudal indicado por cada orden.
+% ==============================================================================
+\section{Generador de órdenes médicas}
 
-\section{Tiempo entre órdenes médicas}
+El generador produce órdenes médicas periódicas cuyo caudal e intervalo
+de tiempo se muestrean de las distribuciones definidas en el documento
+de modelado estadístico, parametrizadas por el grado de criticidad $k$.
 
-Se define la variable aleatoria discreta \(T\) como el tiempo transcurrido,
-expresado en horas, entre dos órdenes médicas consecutivas.
-
-\[
-T \in \{2,4,6,8,12\}
-\]
-
-Para modelar distintos estados clínicos se definen dos distribuciones
-extremas.
-
-\subsection*{Distribución crítica}
+\subsection{Definición formal}
 
 \[
-\begin{array}{c|c}
-t \;(\text{horas}) & P_C(T=t) \\
-\hline
-2  & 0.50 \\
-4  & 0.30 \\
-6  & 0.15 \\
-8  & 0.05 \\
-12 & 0.00
-\end{array}
+  M_{\mathrm{gen}} = \langle X,\; Y,\; S,\; \dint,\; \dext,\; \lambda,\; \ta \rangle
 \]
 
-\subsection*{Distribución estable}
+\begin{align*}
+  X &= \varnothing \\[4pt]
+  Y &= \bigl\{\,(c,\,t,\;0)\;\big|\;
+        c\in\{0,50,100,150,200\},\;
+        t\in\{2,4,6,8,12\}\bigr\} \\[4pt]
+  S &= \bigl\{\,(k,\,c,\,t)\;\big|\;
+        k\in[0,1],\;
+        c\in\{0,50,100,150,200\},\;
+        t\in\{2,4,6,8,12\}\bigr\}
+\end{align*}
 
+\paragraph{Transición interna.}
+Genera una nueva orden a partir del grado de criticidad actual:
 \[
-\begin{array}{c|c}
-t \;(\text{horas}) & P_E(T=t) \\
-\hline
-2  & 0.00 \\
-4  & 0.05 \\
-6  & 0.15 \\
-8  & 0.40 \\
-12 & 0.40
-\end{array}
+  \dint(k,\,c,\,t)
+  \;=\;
+  \bigl(\,k,\;\mathrm{Caudal}(k),\;\mathrm{Tiempo}(k)\,\bigr).
 \]
 
-La distribución general queda definida por:
-
+\paragraph{Transición externa.}
+El modelo no recibe eventos externos:
 \[
-P(T=t \mid k)
-=
-k\,P_C(T=t)
-+
-(1-k)\,P_E(T=t)
+  \dext = \varnothing.
 \]
 
-El tiempo promedio entre órdenes médicas es:
-
-\[ E[T\mid k] = \sum_{t \in \{2,4,6,8,12\}} t\,P(T=t\mid k) \]
-
-\section{Caudal de infusión}
-
-Se define la variable aleatoria discreta \(C\) como el caudal indicado por
-una orden médica, expresado en mililitros por hora.
-
-\[ C \in \{0,50,100,150,200\} \]
-
-El valor \(C=0\) representa la detención de la infusión.
-
-Al igual que para la variable \(T\), se definen dos distribuciones extremas.
-
-\subsection*{Distribución para pacientes críticos}
-
-En pacientes críticos predominan los caudales elevados debido a la necesidad
-de una administración más intensiva de fluidos o medicación. Por esta razón,
-la probabilidad de emitir órdenes médicas con caudal nulo es prácticamente
-inexistente.
-
+\paragraph{Función de salida.}
+Emite el caudal y el tiempo de la orden vigente:
 \[
-\begin{array}{c|c}
-c \;(\text{ml/h}) & P_C(C=c) \\
-\hline
-0   & 0.00 \\
-50  & 0.10 \\
-100 & 0.20 \\
-150 & 0.40 \\
-200 & 0.30
-\end{array}
+  \lambda(k,\,c,\,t) \;=\; (c,\,t,\;0).
 \]
 
-\subsection*{Distribución para pacientes estables}
-
-Para pacientes estables, los ajustes de la terapia suelen ser poco
-frecuentes y los requerimientos de infusión son menores. En consecuencia,
-los caudales reducidos presentan una mayor probabilidad de ocurrencia y
-resulta más probable la emisión de órdenes médicas que indiquen la
-detención de la infusión (\(C=0\)).
-
+\paragraph{Avance temporal.}
 \[
-\begin{array}{c|c}
-c \;(\text{ml/h}) & P_E(C=c) \\
-\hline
-0   & 0.30 \\
-50  & 0.35 \\
-100 & 0.20 \\
-150 & 0.10 \\
-200 & 0.05
-\end{array}
+  \ta(k,\,c,\,t) \;=\; t.
 \]
 
-La distribución general del caudal se define mediante:
+\paragraph{Estado inicial.}
+\[
+  s_0 \;=\; \bigl(\,k_0,\;\mathrm{Caudal}(k_0),\;\mathrm{Tiempo}(k_0)\,\bigr),
+\]
+donde $k_0$ es el grado inicial de criticidad del paciente.
 
-\[ P(C=c \mid k )= k\,P_C(C=c) + (1-k)\,P_E(C=c) \]
+\subsection{Diagrama de estados}
 
-Particularmente, para la suspensión de la infusión:
+\begin{center}
+\begin{tikzpicture}[node distance=3.5cm]
+  \node[state, initial left] (gen) {$(k,\,c,\,t)$};
+  \path (gen) edge[loop right, looseness=5]
+    node[right] {$\dint\;/\;\lambda{:}\;(c,t,0)$} (gen);
+\end{tikzpicture}
+\end{center}
 
-\[ P(C=0\mid k) = 0.30(1-k) \]
+El modelo tiene un único estado paramétrico. Cada transición interna
+actualiza $(c,t)$ mediante muestreo y emite la orden antes de actualizar.
 
-Por lo tanto, a medida que disminuye la criticidad del paciente aumenta la
-probabilidad de que una orden médica indique la finalización de la infusión.
-
-El caudal medio esperado viene dado por:
-
-\[ E[C\mid k] = \sum_{c \in \{0,50,100,150,200\}} c\,P(C=c\mid k) \]
-
-\section{Generador DEVS de órdenes médicas}
-
-El generador utiliza las distribuciones definidas en las secciones
-anteriores para obtener el tiempo hasta la próxima orden médica y el
-caudal asociado a dicha orden.
-
-Sean
-
-\[ Caudal(k)\sim P(C\mid k) \]
-
-y
-
-\[ Tiempo(k)\sim P(T\mid k) \]
-
-las funciones generadoras obtenidas a partir de las distribuciones
-definidas previamente.
-
-El modelo DEVS atómico se define como:
-
-\[ M= \langle X,S,Y, \delta_{int}, \delta_{ext}, \lambda, ta \rangle \]
-
-donde:
-
-\[ X=\varnothing \] 
-\[ Y= \{ ((c,t),0) \mid c\in\{0,50,100,150,200\}, \; t\in\{2,4,6,8,12\} \} \]
-
-\[ S= \{ (k,c,t) \mid k\in[0,1], \; c\in\{0,50,100,150,200\}, \;
-t\in\{2,4,6,8,12\} \} \]
-
-La función de transición interna genera una nueva orden médica a partir del
-grado de criticidad actual:
-
-\[ \delta_{int}(k,c,t) = \Bigl( k, Caudal(k), Tiempo(k) \Bigr) \]
-
-Al no poseer eventos externos:
-
-\[ \delta_{ext} = \varnothing \]
-
-La función de salida emite el caudal y el tiempo asociados a la nueva orden
-médica:
-
-\[ \lambda(k,c,t) = ((c,t),0) \]
-
-El avance temporal queda determinado por el tiempo generado para la próxima
-orden:
-
-\[ ta(k,c,t) = t \]
-
-Finalmente, el estado inicial se define como:
-
-\[ s_0 = \Bigl( k_0, Caudal(k_0), Tiempo(k_0) \Bigr) \]
-
-donde \(k_0\) representa el grado inicial de criticidad del paciente.
-
+% ==============================================================================
 \section{Sensor de flujo}
 
-El sensor de flujo representa el dispositivo encargado de medir el
-caudal real administrado por la bomba de infusión.
+El sensor mide el caudal real administrado por la bomba y emite una
+lectura cada segundo.
 
-De acuerdo con los requisitos del sistema, el sensor debe emitir una
-medición periódica cada segundo, informando el caudal actualmente
-administrado por el actuador de la bomba.
+\subsection{Definición formal}
 
-El modelo DEVS atómico se define como:
+\begin{align*}
+  X &= \{\,(c,\;0)\;\mid\; c\in[0,200]\,\} \\[4pt]
+  Y &= \{\,(c,\;0)\;\mid\; c\in[0,200]\,\} \\[4pt]
+  S &= \{\,(c,\;\sigma)\;\mid\; c\in[0,200],\;\sigma\in\mathbb{R}_0^{+}\,\}
+\end{align*}
 
-\[ M= \langle X,S,Y, \delta_{int}, \delta_{ext}, \lambda, ta \rangle \]
+El estado $s = (c,\,\sigma)$ contiene el último caudal recibido del
+actuador y el tiempo restante $\sigma$ hasta la próxima medición.
 
-donde:
+\paragraph{Transición externa.}
+Actualiza el caudal medido sin modificar el tiempo restante:
+\[
+  \dext\bigl((c,\,\sigma),\;e,\;(x,0)\bigr)
+  \;=\; (x,\;\sigma - e).
+\]
 
-\[ X = \{ (c,0) \mid c\in[0,200] \} \]
+\paragraph{Transición interna.}
+Emite la medición y programa la siguiente un segundo después:
+\[
+  \dint(c,\,\sigma) \;=\; (c,\;1).
+\]
 
-\[ Y = \{ (c,0) \mid c\in[0,200] \} \]
+\paragraph{Función de salida.}
+\[
+  \lambda(c,\,\sigma) \;=\; (c,\;0).
+\]
 
-\[ S = \{ (c,\sigma) \mid c\in[0,200], \; \sigma\in\mathbb{R}_{0}^{+}
+\paragraph{Avance temporal.}
+\[
+  \ta(c,\,\sigma) \;=\; \sigma.
+\]
+
+\paragraph{Estado inicial.}
+\[
+  s_0 \;=\; (0,\;\infty).
+\]
+El sensor permanece pasivo hasta recibir la primera lectura del actuador.
+
+\subsection{Diagrama de estados}
+
+\begin{center}
+\begin{tikzpicture}[node distance=4cm]
+  \node[state, initial left] (pasivo) {pasivo\\$(c,\infty)$};
+  \node[state, right of=pasivo] (activo) {activo\\$(c,\sigma)$};
+
+  \path (pasivo) edge[bend left=20]
+      node[above] {\scriptsize $\dext{:}\;(x,0)\;\big/\;(x,\,\infty{-}0)$}
+      (activo)
+    (activo) edge[loop right, looseness=5]
+      node[right] {\scriptsize $\dint\;/\;\lambda{:}\;(c,0)$}
+      (activo)
+    (activo) edge[loop below, looseness=5]
+      node[below] {\scriptsize $\dext{:}\;(x,0)\;\big/\;(x,\,\sigma{-}e)$}
+      (activo);
+\end{tikzpicture}
+\end{center}
+
+% ==============================================================================
+\section{Controlador}
+
+El controlador recibe órdenes médicas, lecturas del sensor, señales de
+fin de bolsa y confirmaciones del enfermero; emite ajustes a la bomba
+y dispara alarmas.
+
+\subsection{Definición formal}
+
+\begin{align*}
+  X &= \{\mathrm{ordenMedica}\}\!\times\!\{0\}
+     \;\cup\; \{\mathrm{sensorFlujo}\}\!\times\!\{1\}
+     \;\cup\; \{\mathrm{finBolsa}\}\!\times\!\{2\}
+     \;\cup\; \{\mathrm{confirmacionEnfermero}\}\!\times\!\{3\}
+  \\[4pt]
+  Y &= \{\mathrm{alarmaBaja},\mathrm{alarmaMedia},\mathrm{alarmaCritica}\}
+       \!\times\!\{0\}
+     \;\cup\;
+     \{\mathrm{ajustarCaudal},\mathrm{detenerBomba}\}
+       \!\times\!\{1\}
+  \\[4pt]
+  S &= \underbrace{\mathbb{R}_{\ge 0}}_{\mathit{uCM}}
+     \times
+     \underbrace{\mathbb{R}_{\ge 0}}_{\mathit{cO}}
+     \times
+     \underbrace{\mathbb{N}_0}_{\mathit{tol}}
+     \times
+     \underbrace{E_{\mathrm{ctrl}}}_{\mathit{est}}
+     \times
+     \underbrace{\mathbb{R}_0^+ \cup \{\infty\}}_{\mu}
+\end{align*}
+
+donde
+
+\[
+E_{\mathrm{ctrl}}
+=
+\{
+\mathrm{normal},
+\mathrm{bolsaBaja},
+\mathrm{esperandoDetencion},
+\mathrm{estadoCritico}
 \}
 \]
 
-El estado del modelo está dado por:
+y los componentes del estado representan:
 
-\[ s=(c,\sigma) \]
+\begin{itemize}
+\item \(uCM\): último caudal medido.
+\item \(cO\): caudal objetivo.
+\item \(tol\): contador de segundos consecutivos fuera de tolerancia.
+\item \(est\): estado lógico del controlador.
+\item \(\mu\): tiempo hasta la próxima transición interna.
+\end{itemize}
 
-donde \(c\) representa el último caudal recibido desde el actuador
-y \(\sigma\) el tiempo restante hasta la próxima medición.
+\paragraph{Estado inicial.}
 
-La transición externa actualiza el valor medido y programa la próxima
-emisión un segundo después:
 \[
-\delta_{ext}((c,\sigma),e,(x,0))=(x,\sigma-e)
+s_0=
+(0,\;0,\;0,\;\mathrm{normal},\;\infty)
 \]
 
-La transición interna conserva el caudal actual y agenda una nueva
-medición para el siguiente segundo:
+\paragraph{Función auxiliar.}
 
-\[ \delta_{int}(c,\sigma) = (c,1) \]
+\[
+\mathrm{no\_tolerable}(cO,uCM)
+=
+\frac{|cO-uCM|}{cO}
+>
+0.10
+\]
 
-La función de salida emite la medición correspondiente al caudal
-actual:
+\paragraph{Transición externa.}
 
-\[ \lambda(c,\sigma) = (c,0) \]
+Recepción de una nueva orden médica:
 
-El avance temporal viene dado por:
+\[
+\dext
+((uCM,cO,tol,est,\mu),
+e,
+((c,t),0))
+=
+(uCM,c,tol,est,0)
+\]
 
-\[ ta(c,\sigma) = \sigma \]
+Recepción de una medición del sensor:
 
-Finalmente, el estado inicial se define como:
+\[
+\dext
+((uCM,cO,tol,est,\mu),
+e,
+(x,1))
+=
+\begin{cases}
 
-\[ s_0 = (0,\infty) \]
+(x,cO,tol+1,estadoCritico,0)
+&
+\text{si }
+\mathrm{tol > k_{\mathrm{crit}}\times 5
+}
+\\[2ex]
 
-lo que indica que el sensor permanece pasivo hasta recibir la primera
-actualización de caudal proveniente del actuador.
+
+(x,cO,tol+1,est,0)
+&
+\text{si }
+\mathrm{no\_tolerable}(cO,x)
+\\[2ex]
+(x,cO,0,est,0)
+&
+\text{en otro caso}
+\end{cases}
+\]
+
+Recepción de señal de fin de bolsa:
+
+\[
+\dext
+((uCM,cO,tol,est,\mu),
+e,
+(\mathrm{finBolsa},2))
+=
+(uCM,cO,tol,\mathrm{bolsaBaja},0)
+\]
+
+Recepción de confirmación del enfermero:
+
+\[
+\dext
+((uCM,cO,tol,est,\mu),
+e,
+(\mathrm{confirmacionEnfermero},3))
+=
+(uCM,cO,0,\mathrm{normal},\infty)
+\]
+
+\paragraph{Transición interna.}
+
+Luego de emitir una alarma por bolsa baja:
+
+\[
+\dint
+(uCM,cO,tol,\mathrm{bolsaBaja},0)
+=
+(uCM,cO,tol,\mathrm{esperandoDetencion},60)
+\]
+
+Luego de transcurridos los 60 segundos:
+
+\[
+\dint
+(uCM,cO,tol,\mathrm{esperandoDetencion},60)
+=
+(uCM,cO,tol,\mathrm{normal},\infty)
+\]
+
+En cualquier otro caso:
+
+\[
+\dint
+(uCM,cO,tol,\mathrm{normal},\mu)
+=
+(uCM,cO,tol,\mathrm{normal},\infty)
+\]
+
+\paragraph{Función de salida.}
+
+Los casos se evalúan en el orden indicado.
+
+\[
+\lambda(uCM,cO,tol,est,\mu)
+=
+\begin{cases}
+
+(\mathrm{detenerBomba},1)
+&
+\text{si }
+estado = estadoCritico
+
+\\[2ex]
+
+(\mathrm{detenerBomba},1)
+&
+\text{si }
+est=\mathrm{esperandoDetencion}
+\\[2ex]
+
+
+
+(\mathrm{detenerBomba},1)
+&
+\text{si }
+cO=0
+\\[2ex]
+
+(\mathrm{alarmaCritica},0)
+&
+\text{si }
+tol > k_{\mathrm{crit}}\times 5
+\\[2ex]
+
+(\mathrm{alarmaMedia},0)
+&
+\text{si }
+tol > 5
+\\[2ex]
+
+(\mathrm{ajustarCaudal}(cO-uCM),1)
+&
+\text{si }
+uCM \neq cO
+\land
+est=\mathrm{normal}
+\\[2ex]
+
+(\mathrm{ajustarCaudal}(0),1)
+&
+\text{si }
+uCM = cO
+\end{cases}
+\]
+
+
+
+\paragraph{Avance temporal.}
+
+\[
+ta(uCM,cO,tol,est,\mu)
+=
+\mu
+\]
+
+\section{Bomba de infusión}
+
+La bomba modifica el caudal real en respuesta a comandos del controlador.
+
+\subsection{Definición formal}
+
+\begin{align*}
+  X &= \{\mathrm{ajustarBomba},\;\mathrm{detenerBomba}\}\times\{1\} \\[4pt]
+  Y &= \{\,(c,\;0)\;\mid\;c\in[0,200]\,\} \\[4pt]
+  S &= \underbrace{[0,200]}_{\mathit{cR}}
+     \times \underbrace{\{\mathrm{detenida},\,\mathrm{corriendo}\}}_{\mathit{est}}
+     \times \underbrace{\mathbb{R}_0^+}_{\mu}
+\end{align*}
+
+\paragraph{Transición externa.}
+
+\begin{align*}
+\dext&\bigl((cR,\,est,\,\mu),\;e,\;(\mathrm{detenerBomba},\,1)\bigr)
+  \;=\; (0,\;\mathrm{detenida},\;0)
+\\[6pt]
+\dext&\bigl((cR,\,est,\,\mu),\;e,\;(\mathrm{ajustarBomba}(\mathit{dif}),\,1)\bigr)
+  \;=\; \Bigl(cR + \frac{\mathit{dif}}{\mathrm{aleatorio}()},\;
+              \mathrm{corriendo},\;
+              \mathrm{random\_truncado}(0.5)\Bigr)
+\end{align*}
+
+\noindent
+donde $\mathrm{aleatorio}()$ modela la inercia del mecanismo físico de la
+bomba ($\mathrm{aleatorio}() \in (0,1]$).
+
+\paragraph{Transición interna.}
+Una vez transcurrido el retardo $\mu$, la bomba publica su caudal real
+y queda pasiva:
+\[
+  \dint(cR,\,est,\,\mu) \;=\; (cR,\;est,\;\infty).
+\]
+
+\paragraph{Función de salida.}
+Emite el caudal real actualizado:
+\[
+  \lambda(cR,\,est,\,\mu) \;=\; (cR,\;0).
+\]
+
+\paragraph{Avance temporal.}
+\[
+  \ta(cR,\,est,\,\mu) \;=\; \mu.
+\]
+
+\paragraph{Estado inicial.}
+\[
+  s_0 \;=\; (0,\;\mathrm{detenida},\;\infty).
+\]
+
+\subsection{Diagrama de estados}
+
+\begin{center}
+\begin{tikzpicture}[node distance=5cm]
+  \node[state, initial left] (det) {detenida\\$cR=0$};
+  \node[state, right of=det]  (cor) {corriendo\\$cR>0$};
+
+  \path
+    (det) edge[bend left=25]
+      node[above] {\scriptsize $\dext{:}$ ajustar}
+      (cor)
+    (cor) edge[bend left=25]
+      node[below] {\scriptsize $\dext{:}$ detener $\Rightarrow (0,\text{det},0)$}
+      (det)
+    (cor) edge[loop right, looseness=5]
+      node[right] {\scriptsize $\dint\;/\;\lambda{:}\;(cR,0)$}
+      (cor)
+    (cor) edge[loop above, looseness=5]
+      node[above] {\scriptsize $\dext{:}$ ajustar}
+      (cor);
+\end{tikzpicture}
+\end{center}
+
+% ==============================================================================
+\section{Módulo de alarmas}
+
+El módulo recibe señales de alarma del controlador, las emite hacia el
+entorno (interfaz de usuario / personal médico) y gestiona el ciclo de
+espera de confirmación para las alarmas críticas.
+
+\subsection{Definición formal}
+
+\begin{align*}
+  X &= \{\mathrm{alarmaBaja},\,\mathrm{alarmaMedia},\,\mathrm{alarmaCritica}\}
+       \!\times\!\{0\}
+     \;\cup\; \{\mathrm{confirmacionEnfermero}\}\!\times\!\{1\} \\[4pt]
+  Y &= \{\mathrm{alarmaBaja},\,\mathrm{alarmaMedia},\,\mathrm{alarmaCritica}\}
+       \!\times\!\{0\} \\[4pt]
+  S &= E_{\mathrm{alarmas}} \times \mathbb{R}_0^+
+\end{align*}
+
+El conjunto de estados discretos es:
+\[
+  E_{\mathrm{alarmas}} = \{
+    \mathrm{noAlarma},\;
+    \mathrm{alarmaBaja},\;
+    \mathrm{alarmaMedia},\;
+    \mathrm{alarmaCritica},\;
+    \mathrm{espLargo},\;
+    \mathrm{espCorto},\;
+    \mathrm{repetirCritica}
+  \}
+\]
+
+El estado general se expresa como $s = (\mathit{est},\,\sigma)$ donde
+$\sigma$ es el tiempo hasta la próxima transición interna.
+
+\paragraph{Estado inicial.}
+\[
+  s_0 \;=\; (\mathrm{noAlarma},\;\infty).
+\]
+
+\paragraph{Transición externa.}
+\[
+\dext\bigl((\mathit{est},\,\sigma),\;e,\;(x,\,p)\bigr) =
+\begin{cases}
+  (\mathrm{alarmaCritica},\;0)
+    & p=0,\;x=\mathrm{alarmaCritica} \\[4pt]
+  (x,\;0)
+    & p=0,\;x\in\{\mathrm{alarmaBaja},\,\mathrm{alarmaMedia}\} \\[4pt]
+  (\mathrm{noAlarma},\;\infty)
+    & p=1,\;\mathit{est}\in\{\mathrm{espLargo},\,\mathrm{espCorto},\,\mathrm{repetirCritica}\} \\[4pt]
+  (\mathit{est},\;\sigma - e)
+    & \text{en otro caso}
+\end{cases}
+\]
+
+\paragraph{Transición interna.}
+\[
+\dint(\mathit{est},\,\sigma) =
+\begin{cases}
+  (\mathrm{noAlarma},\;\infty)       & \mathit{est}\in\{\mathrm{alarmaMedia},\,\mathrm{alarmaBaja}\} \\[4pt]
+  (\mathrm{espLargo},\;30)           & \mathit{est} = \mathrm{alarmaCritica} \\[4pt]
+  (\mathrm{repetirCritica},\;0)      & \mathit{est} = \mathrm{espLargo} \\[4pt]
+  (\mathrm{espCorto},\;10)           & \mathit{est} = \mathrm{repetirCritica} \\[4pt]
+  (\mathrm{repetirCritica},\;0)      & \mathit{est} = \mathrm{espCorto}
+\end{cases}
+\]
+
+\paragraph{Función de salida.}
+\[
+\lambda(\mathit{est},\,\sigma) =
+\begin{cases}
+  (\mathrm{alarmaCritica},\;0)
+    & \mathit{est}\in\{\mathrm{alarmaCritica},\,\mathrm{repetirCritica}\} \\[4pt]
+  (\mathit{est},\;0)
+    & \mathit{est}\in\{\mathrm{alarmaMedia},\,\mathrm{alarmaBaja}\}
+\end{cases}
+\]
+
+\paragraph{Avance temporal.}
+\[
+  \ta(\mathit{est},\,\sigma) \;=\; \sigma.
+\]
+
+\subsection{Diagrama de estados}
+
+\begin{center}
+\begin{tikzpicture}[
+    node distance=2.2cm and 3.2cm,
+    every state/.append style={minimum width=2.4cm}
+  ]
+
+  \node[state, initial above] (noA)  {noAlarma};
+  \node[state, below left=of noA]  (aB)   {alarmaBaja};
+  \node[state, below=of noA]       (aM)   {alarmaMedia};
+  \node[state, below right=of noA] (aC)   {alarmaCritica};
+
+  \node[state, below=2cm of aC]    (eL)   {espLargo\\$\sigma{=}30$};
+  \node[state, below=2cm of eL]    (rC)   {repetirCritica};
+  \node[state, right=of rC]        (eC)   {espCorto\\$\sigma{=}10$};
+
+  % entradas desde noAlarma
+  \path (noA) edge[bend right=10] node[left]  {\scriptsize alarmaBaja}   (aB)
+        (noA) edge               node[right] {\scriptsize alarmaMedia}  (aM)
+        (noA) edge[bend left=10] node[right] {\scriptsize alarmaCritica}(aC);
+
+  % expiración de baja/media → noAlarma
+  \path (aB)  edge[bend right=20] node[left]  {\scriptsize $\dint$} (noA)
+        (aM)  edge               node[left]  {\scriptsize $\dint$} (noA);
+
+  % ciclo crítico
+  \path (aC)  edge node[right] {\scriptsize $\dint$: espLargo(30)} (eL)
+        (eL)  edge node[right] {\scriptsize $\dint$: repetir}      (rC)
+        (rC)  edge node[above] {\scriptsize $\dint$: espCorto(10)} (eC)
+        (eC)  edge[bend left=30]
+              node[right] {\scriptsize $\dint$: repetir}           (rC);
+
+  % confirmación → noAlarma
+  \path (eL)  edge[bend left=55, dashed]
+              node[above left] {\scriptsize confirm.} (noA)
+        (eC)  edge[bend right=60, dashed]
+              node[below right] {\scriptsize confirm.} (noA)
+        (rC)  edge[bend right=40, dashed]
+              node[below] {\scriptsize confirm.} (noA);
+
+\end{tikzpicture}
+\end{center}
+
+Las transiciones punteadas representan $\dext$ con puerto $p=1$
+(confirmación del enfermero), que reinicia el módulo a \textit{noAlarma}.
 
 \end{document}
