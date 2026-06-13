@@ -30,7 +30,6 @@
 \title{Modelos DEVS del sistema de bomba de infusión}
 \date{}
 
-% ── helpers ────────────────────────────────────────────────────────────────────
 \newcommand{\dint}{\delta_{\mathrm{int}}}
 \newcommand{\dext}{\delta_{\mathrm{ext}}}
 \newcommand{\ta}{\mathit{ta}}
@@ -42,7 +41,6 @@
 \tableofcontents
 \newpage
 
-% ==============================================================================
 \section{Notación común}
 
 Cada modelo atómico DEVS se especifica mediante la tupla
@@ -119,17 +117,23 @@ donde $k_0$ es el grado inicial de criticidad del paciente.
 \subsection{Diagrama de estados}
 
 \begin{center}
-\begin{tikzpicture}[node distance=3.5cm]
-  \node[state, initial left] (gen) {$(k,\,c,\,t)$};
-  \path (gen) edge[loop right, looseness=5]
-    node[right] {$\dint\;/\;\lambda{:}\;(c,t,0)$} (gen);
+\begin{tikzpicture}
+
+\node[draw,circle] (gen) {$\left(k,c,t\right)$};
+
+\node[draw,rectangle] (ctrl) at (5,0) {Controlador};
+
+\draw[-{Stealth}] (gen) -- (ctrl)
+node[midway,above] {$\lambda=(k,0)$};
+
+\draw[-{Stealth}]
+(gen) edge[loop left]
+node {$\dint(k,c,t) = (k,caudal(k),tiempo(k))$}
+(gen);
+
 \end{tikzpicture}
 \end{center}
 
-El modelo tiene un único estado paramétrico. Cada transición interna
-actualiza $(c,t)$ mediante muestreo y emite la orden antes de actualizar.
-
-% ==============================================================================
 \section{Sensor de flujo}
 
 El sensor mide el caudal real administrado por la bomba y emite una
@@ -178,31 +182,44 @@ El sensor permanece pasivo hasta recibir la primera lectura del actuador.
 \subsection{Diagrama de estados}
 
 \begin{center}
-\begin{tikzpicture}[node distance=4cm]
-  \node[state, initial left] (pasivo) {pasivo\\$(c,\infty)$};
-  \node[state, right of=pasivo] (activo) {activo\\$(c,\sigma)$};
+\begin{tikzpicture}
+  \node[draw, rectangle] (act) at (-5,0) {Actuador de la bomba};
+  \node[draw, circle]    (sensor) at (0,0) {$(c,\,\sigma)$};
+  \node[draw, rectangle] (ctrl)   at (5,0) {Controlador};
 
-  \path (pasivo) edge[bend left=20]
-      node[above] {\scriptsize $\dext{:}\;(x,0)\;\big/\;(x,\,\infty{-}0)$}
-      (activo)
-    (activo) edge[loop right, looseness=5]
-      node[right] {\scriptsize $\dint\;/\;\lambda{:}\;(c,0)$}
-      (activo)
-    (activo) edge[loop below, looseness=5]
-      node[below] {\scriptsize $\dext{:}\;(x,0)\;\big/\;(x,\,\sigma{-}e)$}
-      (activo);
+  % Entrada del actuador
+  \draw[-{Stealth}] (act) -- (sensor)
+    node[midway, above] {$\lambda=(x,0)$};
+
+  % Salida hacia el controlador
+  \draw[-{Stealth}] (sensor) -- (ctrl)
+    node[midway, above] {$\lambda = (c,\,0)$};
+
+  % Transición interna
+  \draw[-{Stealth}]
+    (sensor) edge[loop above]
+    node {$\delta_{\text{int}}(c,\,\sigma) = (c,\,1)$}
+    (sensor);
+
+  % Transición externa
+  \draw[-{Stealth}]
+    (sensor) edge[loop below]
+    node {$\delta_{\text{ext}}\bigl((c,\,\sigma),\,e,\,(x,0)\bigr) = (x,\,\sigma-e)$}
+    (sensor);
 \end{tikzpicture}
 \end{center}
 
-% ==============================================================================
 \section{Controlador}
 
-El controlador recibe órdenes médicas, lecturas del sensor, señales de
-fin de bolsa y confirmaciones del enfermero; emite ajustes a la bomba
-y dispara alarmas.
+El controlador es un modelo atómico DEVS cuyas variables de estado han sido
+divididas para gestionar de forma independiente el monitoreo del flujo y el
+ciclo de vida de la bolsa de infusión. Recibe órdenes médicas, lecturas del
+sensor, señales de fin de bolsa y confirmaciones del enfermero; emite ajustes
+a la bomba, registra eventos y dispara alarmas sin que una condición crítica
+bloquee a la otra.
 
-\subsection{Definición formal}
-
+% ── Puertos ────────────────────────────────────────────────────────────
+\subsection{Puertos y estado}
 \begin{align*}
   X &= \{\mathrm{ordenMedica}\}\!\times\!\{0\}
      \;\cup\; \{\mathrm{sensorFlujo}\}\!\times\!\{1\}
@@ -212,7 +229,7 @@ y dispara alarmas.
   Y &= \{\mathrm{alarmaBaja},\mathrm{alarmaMedia},\mathrm{alarmaCritica}\}
        \!\times\!\{0\}
      \;\cup\;
-     \{\mathrm{ajustarCaudal},\mathrm{detenerBomba}\}
+     \{\mathrm{ajustarCaudal},\mathrm{detenerBomba},\mathrm{registrarEvento}\}
        \!\times\!\{1\}
   \\[4pt]
   S &= \underbrace{\mathbb{R}_{\ge 0}}_{\mathit{uCM}}
@@ -221,209 +238,225 @@ y dispara alarmas.
      \times
      \underbrace{\mathbb{N}_0}_{\mathit{tol}}
      \times
-     \underbrace{E_{\mathrm{ctrl}}}_{\mathit{est}}
+     \underbrace{E_{\mathrm{flujo}}}_{\mathit{est}_{\mathrm{flujo}}}
+     \times
+     \underbrace{E_{\mathrm{bolsa}}}_{\mathit{est}_{\mathrm{bolsa}}}
+     \times
+     \underbrace{\mathbb{R}_0^+ \cup \{\infty\}}_{\tau_{\mathrm{bolsa}}}
      \times
      \underbrace{\mathbb{R}_0^+ \cup \{\infty\}}_{\mu}
 \end{align*}
 
-donde
+donde los dominios discretos de estado se definen como:
+\begin{align*}
+E_{\mathrm{flujo}} &= \{\mathrm{normal}, \mathrm{estadoMedio}, \mathrm{estadoCritico}, \mathrm{detencionCritica}\} \\
+E_{\mathrm{bolsa}} &= \{\mathrm{llena}, \mathrm{bolsaBaja}, \mathrm{esperandoDetencion}, \mathrm{vacia}\}
+\end{align*}
 
-\[
-E_{\mathrm{ctrl}}
-=
-\{
-\mathrm{normal},
-\mathrm{bolsaBaja},
-\mathrm{esperandoDetencion},
-\mathrm{estadoCritico}
-\}
-\]
+\noindent
+Cada componente pertenece a un rol funcional:
 
-y los componentes del estado representan:
-
-\begin{itemize}
-\item \(uCM\): último caudal medido.
-\item \(cO\): caudal objetivo.
-\item \(tol\): contador de segundos consecutivos fuera de tolerancia.
-\item \(est\): estado lógico del controlador.
-\item \(\mu\): tiempo hasta la próxima transición interna.
-\end{itemize}
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Variable & Tipo & Rol \\
+\midrule
+$uCM$ & $\mathbb{R}_{\ge 0}$ & Monitoreo de flujo \\
+$cO$  & $\mathbb{R}_{\ge 0}$ & Gestión de órdenes \\
+$tol$ & $\mathbb{N}_0$       & Monitoreo de flujo \\
+$est_{\mathrm{flujo}}$ & $E_{\mathrm{flujo}}$  & Control de anomalías de caudal \\
+$est_{\mathrm{bolsa}}$ & $E_{\mathrm{bolsa}}$  & Ciclo de vida de la medicación \\
+$\tau_{\mathrm{bolsa}}$ & $\mathbb{R}_0^+\cup\{\infty\}$ & Temporizador exclusivo de la bolsa \\
+$\mu$ & $\mathbb{R}_0^+\cup\{\infty\}$ & Avance temporal DEVS general \\
+\bottomrule
+\end{tabular}
+\end{center}
 
 \paragraph{Estado inicial.}
-
 \[
-s_0=
-(0,\;0,\;0,\;\mathrm{normal},\;\infty)
+s_0 = (0,\;0,\;0,\;\mathrm{normal},\;\mathrm{llena},\;\infty,\;\infty)
 \]
 
 \paragraph{Función auxiliar.}
-
 \[
 \mathrm{no\_tolerable}(cO,uCM)
-=
-\frac{|cO-uCM|}{cO}
->
-0.10
+\;=\;
+\frac{|cO-uCM|}{cO} > 0{,}10
 \]
 
-\paragraph{Transición externa.}
-
-Recepción de una nueva orden médica:
-
+% --- NOTACIÓN ABREVIADA PARA LAS TRANSICIONES ---
+Para simplificar la notación en las siguientes funciones, definimos $s$ como el estado actual del modelo justo antes de la transición:
 \[
-\dext
-((uCM,cO,tol,est,\mu),
-e,
-((c,t),0))
-=
-(uCM,c,tol,est,0)
+s = (uCM, cO, tol, est_{\mathrm{flujo}}, est_{\mathrm{bolsa}}, \tau_{\mathrm{bolsa}}, \mu)
 \]
 
-Recepción de una medición del sensor:
+% ── ROL 1 ───────────────────────────────────────────────────────────────
+\subsection{Rol 1 – Gestión de órdenes}
 
+Este rol es el encargado de actualizar el caudal objetivo a partir de las 
+directivas médicas. Al recibir una nueva orden, si el controlador se 
+encontraba en un estado de bloqueo por alerta critica, se restaura el monitoreo 
+normal de flujo para permitir la reanudación de la infusión. Asimismo, la 
+transición actualiza el reloj de la bolsa descontando el tiempo transcurrido $e$. 
+
+Cabe destacar la aritmética del temporizador: cuando la 
+bolsa se encuentra en condiciones normales (llena), este adopta un valor infinito 
+($\tau_{\mathrm{bolsa}} = \infty$), volviendo irrelevante la resta algebraica ya 
+que $\infty - e = \infty$. Por el contrario, si el sistema ya había ingresado en el 
+período de cuenta regresiva por fin de bolsa, esta operación decrementa de forma 
+precisa el tiempo remanente exacto en segundos, asegurando que la llegada de la 
+orden no altere ni reinicie el límite  de 60 segundos antes de la detención 
+automática.
+
+\paragraph{Transición externa — recepción de orden médica.}
+\begin{align*}
+\dext(s,\,e,\,((c,t),0)) = (&uCM,\,c,\,0,\,\mathrm{normal},\,est_{\mathrm{bolsa}}, \\
+                            &\tau_{\mathrm{bolsa}}-e,\,0)
+\end{align*}
+
+% ── ROL 2 ───────────────────────────────────────────────────────────────
+\subsection{Rol 2 – Monitoreo de flujo}
+
+Este rol modela el comportamiento reactivo del controlador frente a la retroalimentación 
+periódica enviada por el sensor de flujo. El componente mantiene un registro del último 
+caudal medido ($q_{\mathrm{med}}$) y evalúa su consistencia respecto al caudal objetivo 
+($q_{\mathrm{obj}}$). Ante una fluctuación que supere el umbral de tolerancia permitido del 
+10\%, el sistema no detiene la infusión de inmediato, sino que inicializa un mecanismo 
+de persistencia temporal gestionado por el contador discreto de desviaciones 
+($c_{\mathrm{dev}}$). Debido a que el muestreo del entorno es síncrono y ocurre con un 
+período estricto de 1 segundo, el límite de seguridad de 5 segundos se mapea formalmente 
+mediante la constante acotada $k=5$. Toda interrupción externa generada por una nueva 
+lectura del sensor obliga al modelo a calcular el descuento del tiempo transcurrido $e$ 
+sobre el temporizador de la bolsa ($t_{\mathrm{rem}}$). Este cálculo algebraico, definido 
+como $t_{\mathrm{rem}}' = t_{\mathrm{rem}} - e$, garantiza la sincronización analítica de 
+ambos ciclos de vida, impidiendo que el bombardeo continuo de eventos del sensor reinicie 
+la cuenta regresiva de la bolsa.
+
+\paragraph{Transición externa — recepción de medición del sensor.}
+Sea $\tau' = \tau_{\mathrm{bolsa}} - e$:
 \[
-\dext
-((uCM,cO,tol,est,\mu),
-e,
-(x,1))
-=
+\dext(s,\,e,\,(x,1)) =
 \begin{cases}
-
-(x,cO,tol+1,estadoCritico,0)
-&
-\text{si }
-\mathrm{tol > k_{\mathrm{crit}}\times 5
-}
-\\[2ex]
-
-
-(x,cO,tol+1,est,0)
-&
-\text{si }
-\mathrm{no\_tolerable}(cO,x)
-\\[2ex]
-(x,cO,0,est,0)
-&
-\text{en otro caso}
+  (x,\,cO,\,0,\,\mathrm{estadoCritico},\,est_{\mathrm{bolsa}},\,\tau',\,0)
+    \\ \quad \text{si } tol > 5 \land est_{\mathrm{flujo}} = \mathrm{estadoMedio}
+  \\[2ex]
+  (x,\,cO,\,0,\,\mathrm{estadoMedio},\,est_{\mathrm{bolsa}},\,\tau',\,0)
+    \\ \quad \text{si } tol > 5 \land est_{\mathrm{flujo}} = \mathrm{normal}
+  \\[2ex]
+  (x,\,cO,\,tol+1,\,est_{\mathrm{flujo}},\,est_{\mathrm{bolsa}},\,\tau',\,\tau')
+    \\ \quad \text{si } \mathrm{no\_tolerable}(cO,x)
+  \\[2ex]
+  (x,\,cO,\,0,\,est_{\mathrm{flujo}},\,est_{\mathrm{bolsa}},\,\tau',\,\tau')
+    \\ \quad \text{en otro caso}
 \end{cases}
 \]
 
-Recepción de señal de fin de bolsa:
+\paragraph{Transición interna — secuencia de estado crítico.}
+La secuencia detiene el avance de la bolsa (se asume tiempo nulo) para emitir alarmas y detener la bomba.
+\begin{align*}
+\dint&(uCM,cO,tol,\mathrm{estadoCritico},est_{\mathrm{bolsa}},\tau_{\mathrm{bolsa}},0) \\
+&= (uCM,cO,tol,\mathrm{detencionCritica},est_{\mathrm{bolsa}},\tau_{\mathrm{bolsa}},0)
+\end{align*}
 
-\[
-\dext
-((uCM,cO,tol,est,\mu),
-e,
-(\mathrm{finBolsa},2))
-=
-(uCM,cO,tol,\mathrm{bolsaBaja},0)
-\]
+\begin{align*}
+\dint&(uCM,cO,tol,\mathrm{detencionCritica},est_{\mathrm{bolsa}},\tau_{\mathrm{bolsa}},0) \\
+&= (uCM,cO,tol,\mathrm{estadoCritico},est_{\mathrm{bolsa}},\,\tau_{\mathrm{bolsa}},\,\infty)
+\end{align*}
 
-Recepción de confirmación del enfermero:
+\paragraph{Transición externa — confirmación del enfermero.}
+Devuelve el estado de flujo a normal.
+\begin{align*}
+\dext(s,\,e,\,(\mathrm{confirmacionEnfermero},3)) = 
+  (&uCM,\,cO,\,0,\,\mathrm{normal},\,est_{\mathrm{bolsa}}, \\
+   &\tau_{\mathrm{bolsa}}-e,\,\tau_{\mathrm{bolsa}}-e)
+\end{align*}
+\clearpage
+% ── ROL 3 ───────────────────────────────────────────────────────────────
+\subsection{Rol 3 – Ciclo de bolsa}
 
-\[
-\dext
-((uCM,cO,tol,est,\mu),
-e,
-(\mathrm{confirmacionEnfermero},3))
-=
-(uCM,cO,0,\mathrm{normal},\infty)
-\]
+Gestiona independientemente el fin de bolsa y su detención obligatoria transcurridos los 60 segundos.
+Se supone que al pasar los 60 segundos, la bolsa queda vacia
 
-\paragraph{Transición interna.}
+\paragraph{Transición externa — recepción de señal de fin de bolsa.}
+\begin{align*}
+\dext(s,\,e,\,(\mathrm{finBolsa},2)) = 
+  (&uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,\mathrm{bolsaBaja}, \\
+   &\tau_{\mathrm{bolsa}}-e,\,0)
+\end{align*}
 
-Luego de emitir una alarma por bolsa baja:
+\paragraph{Transiciones internas.}
+Luego de emitir la alarma por bolsa baja, arranca el temporizador de 60 segundos:
+\begin{align*}
+\dint&(uCM,cO,tol,est_{\mathrm{flujo}},\mathrm{bolsaBaja},\tau_{\mathrm{bolsa}},0) \\
+&= (uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,\mathrm{esperandoDetencion},\,60,\,60)
+\end{align*}
 
-\[
-\dint
-(uCM,cO,tol,\mathrm{bolsaBaja},0)
-=
-(uCM,cO,tol,\mathrm{esperandoDetencion},60)
-\]
+Luego de transcurridos los 60 segundos de espera (cuando $\mu$ se agota):
+\begin{align*}
+\dint&(uCM,cO,tol,est_{\mathrm{flujo}},\mathrm{esperandoDetencion},\tau_{\mathrm{bolsa}},\mu) \\
+&= (uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,\mathrm{vacia},\,0,\,0)
+\end{align*}
 
-Luego de transcurridos los 60 segundos:
+Luego de emitir la detención por bolsa vacía:
+\begin{align*}
+\dint&(uCM,cO,tol,est_{\mathrm{flujo}},\mathrm{vacia},0,0) \\
+&= (uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,\mathrm{vacia},\,\infty,\,\infty)
+\end{align*}
 
-\[
-\dint
-(uCM,cO,tol,\mathrm{esperandoDetencion},60)
-=
-(uCM,cO,tol,\mathrm{normal},\infty)
-\]
+En caso de que ocurra una interrupción sin cambio de estado mayor:
+\begin{align*}
+\dint&(uCM,cO,tol,est_{\mathrm{flujo}},est_{\mathrm{bolsa}},\tau_{\mathrm{bolsa}},\mu) \\
+&= (uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,est_{\mathrm{bolsa}},\,\tau_{\mathrm{bolsa}},\,\infty)
+\end{align*}
 
-En cualquier otro caso:
+\paragraph{Dinámica temporal y reactividad del controlador.}
+Esta última regla de transición es fundamental para el comportamiento dinámico del 
+sistema. Por ejemplo, al producirse el escalamiento hacia el estado 
+$\mathrm{estadoMedio}$, la función de transición interna asigna un avance 
+temporal infinito ($\mu = \infty$), lo que teóricamente deja al controlador en un 
+estado de reposo o ``espera pasiva''. 
 
-\[
-\dint
-(uCM,cO,tol,\mathrm{normal},\mu)
-=
-(uCM,cO,tol,\mathrm{normal},\infty)
-\]
-
-\paragraph{Función de salida.}
-
-Los casos se evalúan en el orden indicado.
-
-\[
-\lambda(uCM,cO,tol,est,\mu)
-=
-\begin{cases}
-
-(\mathrm{detenerBomba},1)
-&
-\text{si }
-estado = estadoCritico
-
-\\[2ex]
-
-(\mathrm{detenerBomba},1)
-&
-\text{si }
-est=\mathrm{esperandoDetencion}
-\\[2ex]
-
-
-
-(\mathrm{detenerBomba},1)
-&
-\text{si }
-cO=0
-\\[2ex]
-
-(\mathrm{alarmaCritica},0)
-&
-\text{si }
-tol > k_{\mathrm{crit}}\times 5
-\\[2ex]
-
-(\mathrm{alarmaMedia},0)
-&
-\text{si }
-tol > 5
-\\[2ex]
-
-(\mathrm{ajustarCaudal}(cO-uCM),1)
-&
-\text{si }
-uCM \neq cO
-\land
-est=\mathrm{normal}
-\\[2ex]
-
-(\mathrm{ajustarCaudal}(0),1)
-&
-\text{si }
-uCM = cO
-\end{cases}
-\]
-
-
+Sin embargo, el flujo de la simulación no se detiene de forma permanente debido a la 
+naturaleza periódica del entorno: el componente \textbf{Sensor de flujo} continúa 
+emitiendo eventos de forma síncrona cada 1 segundo[cite: 42, 63]. Cada una de estas mediciones 
+provoca la ejecución inmediata de una transición externa ($\delta_{ext}$), 
+forzando al controlador a despertar, evaluar el desvío actual y reanudar activamente 
+la lógica de monitoreo de la infusión.
 
 \paragraph{Avance temporal.}
+\[
+ta(s) = \mu
+\]
+
+% ── ROL 4 ───────────────────────────────────────────────────────────────
+\subsection{Rol 4 – Función de salida}
+
+La función de salida lee el estado compuesto completo y determina la
+acción de mayor prioridad. Los casos se evalúan en el orden indicado;
+el primero que se cumple es el único que se emite.
 
 \[
-ta(uCM,cO,tol,est,\mu)
-=
-\mu
+\lambda(s) =
+\begin{cases}
+  (\mathrm{alarmaCritica},0)
+    & \text{si } est_{\mathrm{flujo}} = \mathrm{estadoCritico} \land \mu = 0
+  \\[2ex]
+  (\mathrm{detenerBomba},1)
+    & \text{si } est_{\mathrm{flujo}} = \mathrm{detencionCritica} 
+    \\ & \quad \lor est_{\mathrm{bolsa}} = \mathrm{vacia} \lor cO = 0
+  \\[2ex]
+  (\mathrm{alarmaBaja},0)
+    & \text{si } est_{\mathrm{bolsa}} = \mathrm{bolsaBaja} \land \mu = 0
+  \\[2ex]
+  (\mathrm{alarmaMedia},0)
+    & \text{si } est_{\mathrm{flujo}} = \mathrm{estadoMedio} \land \mu = 0
+  \\[2ex]
+  (\mathrm{ajustarCaudal}(cO-uCM),1)
+    & \text{si } uCM \neq cO \land est_{\mathrm{flujo}} = \mathrm{normal}
+  \\[2ex]
+  (\mathrm{ajustarCaudal}(0),1)
+    & \text{si } uCM = cO
+\end{cases}
 \]
 
 \section{Bomba de infusión}
@@ -449,7 +482,7 @@ La bomba modifica el caudal real en respuesta a comandos del controlador.
 \dext&\bigl((cR,\,est,\,\mu),\;e,\;(\mathrm{ajustarBomba}(\mathit{dif}),\,1)\bigr)
   \;=\; \Bigl(cR + \frac{\mathit{dif}}{\mathrm{aleatorio}()},\;
               \mathrm{corriendo},\;
-              \mathrm{random\_truncado}(0.5)\Bigr)
+              \mathrm{random\_truncado}(0.3)\Bigr)
 \end{align*}
 
 \noindent
@@ -481,27 +514,93 @@ Emite el caudal real actualizado:
 
 \subsection{Diagrama de estados}
 
+% ── Caso 1: detener estando corriendo ───────────────────────────────────
 \begin{center}
-\begin{tikzpicture}[node distance=5cm]
-  \node[state, initial left] (det) {detenida\\$cR=0$};
-  \node[state, right of=det]  (cor) {corriendo\\$cR>0$};
+\begin{tikzpicture}
+  \node[draw, rectangle] (ctrl)   at (-4,0) {Controlador};
+  \node[draw, circle, minimum size=2cm, align=center]
+                         (bomba)  at (0,0)  {estado\\(corriendo)};
+  \node[draw, rectangle] (sensor) at (4,0)  {Sensor};
 
-  \path
-    (det) edge[bend left=25]
-      node[above] {\scriptsize $\dext{:}$ ajustar}
-      (cor)
-    (cor) edge[bend left=25]
-      node[below] {\scriptsize $\dext{:}$ detener $\Rightarrow (0,\text{det},0)$}
-      (det)
-    (cor) edge[loop right, looseness=5]
-      node[right] {\scriptsize $\dint\;/\;\lambda{:}\;(cR,0)$}
-      (cor)
-    (cor) edge[loop above, looseness=5]
-      node[above] {\scriptsize $\dext{:}$ ajustar}
-      (cor);
+  \draw[-{Stealth}] (ctrl) -- (bomba)
+    node[midway, above] {$\delta_{\text{ext}_{(\mathrm{detener},\,0)}}$};
+
+  \draw[-{Stealth}] (bomba) -- (sensor)
+    node[midway, above] {$\lambda = \mathit{caudal}$};
+
+  \draw[-{Stealth}]
+    (bomba) edge[loop above]
+    node[above] {$\delta_{\text{int}} = (\mathit{caudal},\;\mathrm{detenido})$}
+    (bomba);
 \end{tikzpicture}
 \end{center}
 
+% ── Caso 2: ajustar estando corriendo ───────────────────────────────────
+\begin{center}
+\begin{tikzpicture}
+  \node[draw, rectangle] (ctrl)   at (-4,0) {Controlador};
+  \node[draw, circle, minimum size=2cm, align=center]
+                         (bomba)  at (0,0)  {estado\\(corriendo)};
+  \node[draw, rectangle] (sensor) at (4,0)  {Sensor};
+
+  \draw[-{Stealth}] (ctrl) -- (bomba)
+    node[midway, above]
+    {$\delta_{\text{ext}_{(\mathrm{ajustar},\,\mathit{dif}),\,0}}$};
+
+  \draw[-{Stealth}] (bomba) -- (sensor)
+    node[midway, above] {$\lambda = \mathit{caudal}$};
+
+  \draw[-{Stealth}]
+    (bomba) edge[loop above]
+    node[above]
+    {$\delta_{\text{int}} = \bigl(\mathit{caudal}+\tfrac{\mathit{dif}}{n},\;\mathrm{encendido}\bigr)$}
+    (bomba);
+\end{tikzpicture}
+\end{center}
+
+% ── Caso 3: detener estando detenido ────────────────────────────────────
+\begin{center}
+\begin{tikzpicture}
+  \node[draw, rectangle] (ctrl)   at (-4,0) {Controlador};
+  \node[draw, circle, minimum size=2cm, align=center]
+                         (bomba)  at (0,0)  {estado\\(detenido)};
+  \node[draw, rectangle] (sensor) at (4,0)  {Sensor};
+
+  \draw[-{Stealth}] (ctrl) -- (bomba)
+    node[midway, above] {$\delta_{\text{ext}_{(\mathrm{detener},\,0)}}$};
+
+  \draw[-{Stealth}] (bomba) -- (sensor)
+    node[midway, above] {$\lambda = \mathit{caudal}$};
+
+  \draw[-{Stealth}]
+    (bomba) edge[loop above]
+    node[above] {$\delta_{\text{int}} = (\mathit{caudal},\;\mathrm{detenido})$}
+    (bomba);
+\end{tikzpicture}
+\end{center}
+
+% ── Caso 4: ajustar estando detenido ────────────────────────────────────
+\begin{center}
+\begin{tikzpicture}
+  \node[draw, rectangle] (ctrl)   at (-4,0) {Controlador};
+  \node[draw, circle, minimum size=2cm, align=center]
+                         (bomba)  at (0,0)  {estado\\(detenido)};
+  \node[draw, rectangle] (sensor) at (4,0)  {Sensor};
+
+  \draw[-{Stealth}] (ctrl) -- (bomba)
+    node[midway, above]
+    {$\delta_{\text{ext}_{(\mathrm{ajustar},\,\mathit{dif}),\,0}}$};
+
+  \draw[-{Stealth}] (bomba) -- (sensor)
+    node[midway, above] {$\lambda = \mathit{caudal}$};
+
+  \draw[-{Stealth}]
+    (bomba) edge[loop above]
+    node[above]
+    {$\delta_{\text{int}} = (\mathit{caudal},\;\mathrm{encendido})$}
+    (bomba);
+\end{tikzpicture}
+\end{center}
 % ==============================================================================
 \section{Módulo de alarmas}
 
