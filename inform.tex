@@ -341,6 +341,7 @@ El sensor permanece pasivo hasta recibir la primera lectura del actuador.
     (sensor);
 \end{tikzpicture}
 \end{center}
+\clearpage
 
 \section{Controlador}
 
@@ -351,20 +352,34 @@ sensor, señales de fin de bolsa y confirmaciones del enfermero; emite ajustes
 a la bomba, registra eventos y dispara alarmas sin que una condición crítica
 bloquee a la otra.
 
-% ── Puertos ────────────────────────────────────────────────────────────
+El mecanismo de salida se basa en una \textbf{cola de acciones pendientes}
+$\mathit{acciones} \in (A \times \mathbb{R}_{\ge 0})^*$: cada elemento
+$(a_i, d_i)$ representa una acción $a_i$ con su demora asociada $d_i$ antes
+de ser emitida. Cada transición externa deposita en esa lista todas las
+salidas que deben emitirse junto a su tiempo de espera; la función de salida
+siempre despacha la acción de la cabeza; y la transición interna la consume.
+El avance temporal queda determinado por la demora de la cabeza de la cola,
+eliminando la variable auxiliar $\mu$.
+
+% ─────────────────────────────────────────────────────────────────────────────
 \subsection{Puertos y estado}
+
+\paragraph{Puertos.}
 \begin{align*}
   X &= \{\mathrm{ordenMedica}\}\!\times\!\{0\}
-     \;\cup\; \{\mathrm{sensorFlujo}\}\!\times\!\{1\}
-     \;\cup\; \{\mathrm{finBolsa}\}\!\times\!\{2\}
-     \;\cup\; \{\mathrm{confirmacionEnfermero}\}\!\times\!\{3\}
+       \;\cup\; \{\mathrm{sensorFlujo}\}\!\times\!\{1\}
+       \;\cup\; \{\mathrm{finBolsa}\}\!\times\!\{2\}
+       \;\cup\; \{\mathrm{confirmacionEnfermero}\}\!\times\!\{3\}
   \\[4pt]
-Y &= \{\mathrm{alarmaBaja},\mathrm{alarmaMedia},\mathrm{alarmaCritica}\}
-       \!\times\!\{0\}
-     \;\cup\;
-     \{\mathrm{ajustarCaudal},\mathrm{detenerBomba},\mathrm{registrarEvento}\}
-       \!\times\!\{1\}
-  \\[4pt]
+  Y &= \{\mathrm{alarmaBaja},\mathrm{alarmaMedia},\mathrm{alarmaCritica}\}
+           \!\times\!\{0\}
+       \;\cup\;
+       \{\mathrm{ajustarCaudal},\mathrm{detenerBomba},\mathrm{registrarEvento}\}
+           \!\times\!\{1\}
+\end{align*}
+
+\paragraph{Espacio de estados.}
+\begin{align*}
   S &= \underbrace{\mathbb{R}_{\ge 0}}_{\mathit{uCM}}
      \times
      \underbrace{\mathbb{R}_{\ge 0}}_{\mathit{cO}}
@@ -377,222 +392,282 @@ Y &= \{\mathrm{alarmaBaja},\mathrm{alarmaMedia},\mathrm{alarmaCritica}\}
      \times
      \underbrace{\mathbb{R}_0^+ \cup \{\infty\}}_{\tau_{\mathrm{bolsa}}}
      \times
-     \underbrace{\mathbb{R}_0^+ \cup \{\infty\}}_{\mu}
-     \times
-     \underbrace{boolean}_{\mathrm{logger}}
+     \underbrace{(A \times \mathbb{R}_{\ge 0})^*}_{\mathit{acciones}}
 \end{align*}
 
-donde los dominios discretos de estado se definen como:
+donde los dominios discretos se definen como:
 \begin{align*}
-E_{\mathrm{flujo}} &= \{\mathrm{normal}, \mathrm{estadoMedio}, \mathrm{estadoCritico}, \mathrm{detencionCritica}\} \\
-E_{\mathrm{bolsa}} &= \{\mathrm{llena}, \mathrm{bolsaBaja}, \mathrm{esperandoDetencion}, \mathrm{vacia}\}
+  E_{\mathrm{flujo}} &= \{\mathrm{normal},\,\mathrm{estadoMedio},\,\mathrm{estadoCritico}\} \\
+  E_{\mathrm{bolsa}} &= \{\mathrm{llena},\,\mathrm{bolsaBaja},\,\mathrm{esperandoDetencion},\,\mathrm{vacia}\}
 \end{align*}
 
-\noindent
-Cada componente pertenece a un rol funcional:
+y el conjunto de acciones posibles es:
+\[
+  A = \{\mathrm{alarmaBaja},\,\mathrm{alarmaMedia},\,\mathrm{alarmaCritica},\,
+        \mathrm{ajustarCaudal},\,\mathrm{detenerBomba},\,\mathrm{registrarEvento}\}
+\]
+
+\paragraph{Roles funcionales de cada variable.}
 
 \begin{center}
 \begin{tabular}{lll}
 \toprule
 Variable & Tipo & Rol \\
 \midrule
-$uCM$ & $\mathbb{R}_{\ge 0}$ & Monitoreo de flujo \\
-$cO$  & $\mathbb{R}_{\ge 0}$ & Gestión de órdenes \\
-$tol$ & $\mathbb{N}_0$       & Monitoreo de flujo \\
-$est_{\mathrm{flujo}}$ & $E_{\mathrm{flujo}}$  & Control de anomalías de caudal \\
-$est_{\mathrm{bolsa}}$ & $E_{\mathrm{bolsa}}$  & Ciclo de vida de la medicación \\
-$\tau_{\mathrm{bolsa}}$ & $\mathbb{R}_0^+\cup\{\infty\}$ & Temporizador exclusivo de la bolsa \\
-$\mu$ & $\mathbb{R}_0^+\cup\{\infty\}$ & Avance temporal DEVS general \\
+$uCM$                   & $\mathbb{R}_{\ge 0}$               & Monitoreo de flujo \\
+$cO$                    & $\mathbb{R}_{\ge 0}$               & Gestión de órdenes \\
+$tol$                   & $\mathbb{N}_0$                     & Monitoreo de flujo \\
+$est_{\mathrm{flujo}}$  & $E_{\mathrm{flujo}}$               & Control de anomalías de caudal \\
+$est_{\mathrm{bolsa}}$  & $E_{\mathrm{bolsa}}$               & Ciclo de vida de la medicación \\
+$\tau_{\mathrm{bolsa}}$ & $\mathbb{R}_0^+\cup\{\infty\}$     & Temporizador exclusivo de la bolsa \\
+$\mathit{acciones}$     & $(A \times \mathbb{R}_{\ge 0})^*$  & Cola de salidas pendientes con demora \\
 \bottomrule
 \end{tabular}
 \end{center}
 
 \paragraph{Estado inicial.}
 \[
-s_0 = (0,\;0,\;0,\;\mathrm{normal},\;\mathrm{llena},\;\infty,\;\infty)
+  s_0 = (0,\;0,\;0,\;\mathrm{normal},\;\mathrm{llena},\;\infty,\;[])
 \]
 
-\paragraph{Función auxiliar.}
+\paragraph{Función auxiliar \texttt{no\_tolerable}.}
 \[
-\mathrm{no\_tolerable}(cO,uCM)
-\;=\;
-\frac{|cO-uCM|}{cO} > 0{,}10
+  \mathrm{no\_tolerable}(cO,uCM)
+  \;=\;
+  \frac{|cO-uCM|}{cO} > 0{,}10
 \]
 
-% --- NOTACIÓN ABREVIADA PARA LAS TRANSICIONES ---
-Para simplificar la notación en las siguientes funciones, definimos $s$ como el estado actual del modelo justo antes de la transición:
+
+\paragraph{Función auxiliar \texttt{conLog}.}
+Para evitar repetir el patrón de logging en cada transición, se define una
+función auxiliar que intercala automáticamente un \texttt{registrarEvento}
+inmediato después de cada acción de la cola:
+\begin{align*}
+  \mathrm{conLog}([]) &= [] \\[4pt]
+  \mathrm{conLog}([(a_1, d_1),\, \ldots]) &=
+    [(a_1,\, d_1),\, (\mathrm{(registrarEvento,s)},\, 0)]
+    \;\mathbin{+\!\!+}\;
+    \mathrm{conLog}([(a_2, d_2), \ldots])
+\end{align*}
+donde $\mathbin{+\!\!+}$ denota la concatenación de listas. La función es
+genérica: no depende del tipo de acción ni de la cantidad de elementos, y
+garantiza que toda salida quede registrada en el log inmediatamente después
+de ser emitida.
+
+Para simplificar la notación en las siguientes funciones, se define $s$
+como el estado actual del modelo justo antes de la transición:
 \[
-s = (uCM, cO, tol, est_{\mathrm{flujo}}, est_{\mathrm{bolsa}}, \tau_{\mathrm{bolsa}}, \mu)
+  s = (uCM,\;cO,\;tol,\;est_{\mathrm{flujo}},\;est_{\mathrm{bolsa}},\;
+       \tau_{\mathrm{bolsa}},\;\mathit{acciones})
 \]
 
-% ── ROL 1 ───────────────────────────────────────────────────────────────
+
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Avance temporal}
+
+\[
+  ta(s) =
+  \begin{cases}
+    d_1    & \text{si } \mathit{acciones} = [(a_1,d_1),\ldots] \\
+    \infty & \text{si } \mathit{acciones} = []
+  \end{cases}
+\]
+
+El tiempo de avance es siempre la demora de la cabeza de la cola.
+Las acciones inmediatas llevan $d_i = 0$; las diferidas llevan el valor
+correspondiente. Cuando la cola queda vacía, el controlador entra en reposo
+pasivo hasta el próximo evento externo.
+
+% ─────────────────────────────────────────────────────────────────────────────
 \subsection{Rol 1 – Gestión de órdenes}
 
-Este rol es el encargado de actualizar el caudal objetivo a partir de las 
-directivas médicas. Al recibir una nueva orden, si el controlador se 
-encontraba en un estado de bloqueo por alerta critica, se restaura el monitoreo 
-normal de flujo para permitir la reanudación de la infusión. Asimismo, la 
-transición actualiza el reloj de la bolsa descontando el tiempo transcurrido $e$. 
+Este rol actualiza el caudal objetivo a partir de las directivas médicas.
+Al recibir una nueva orden, si el controlador se encontraba bloqueado por
+una alerta crítica, se restaura el monitoreo normal de flujo para permitir
+la reanudación de la infusión. Asimismo, la transición actualiza el reloj de
+la bolsa descontando el tiempo transcurrido $e$.
 
-Cabe destacar la aritmética del temporizador: cuando la 
-bolsa se encuentra en condiciones normales (llena), este adopta un valor infinito 
-($\tau_{\mathrm{bolsa}} = \infty$), volviendo irrelevante la resta algebraica ya 
-que $\infty - e = \infty$. Por el contrario, si el sistema ya había ingresado en el 
-período de cuenta regresiva por fin de bolsa, esta operación decrementa de forma 
-precisa el tiempo remanente exacto en segundos, asegurando que la llegada de la 
-orden no altere ni reinicie el límite  de 60 segundos antes de la detención 
-automática.
+\begin{itemize}
+  \item Cuando la bolsa está en estado \textit{llena}, $\tau_{\mathrm{bolsa}} = \infty$
+        y la resta $\infty - e = \infty$ es algebraicamente irrelevante.
+  \item Si ya se inició la cuenta regresiva por fin de bolsa, la operación
+        decrementa con precisión el tiempo remanente en segundos, garantizando
+        que la nueva orden no reinicie el límite de 60~segundos.
+\end{itemize}
 
-\paragraph{Transición externa — recepción de orden médica.}
+La demora $\mathit{rand}_{0.3} \times 10$ modela el retardo real de respuesta
+de la bomba: el ajuste de caudal no se emite de forma instantánea, sino tras
+una espera aleatoria de hasta 3~segundos.
+
+\paragraph{Transición externa — orden médica con $c > 0$.}
 \begin{align*}
-\dext(s,\,e,\,((c,t),0)) = (&uCM,\,c,\,0,\,\mathrm{normal},\,est_{\mathrm{bolsa}}, \\
-                            &\tau_{\mathrm{bolsa}}-e,\,random\_truncado(0.3) * 10)
+  \delta_{\mathrm{ext}}(s,\,e,\,((c,t),0))
+  = \bigl(&uCM,\;c,\;0,\;\mathrm{normal},\;est_{\mathrm{bolsa}},\;
+           \tau_{\mathrm{bolsa}}-e, \\
+          &conLog([(\mathrm{ajustarCaudal}(c - uCM),\;
+             \mathrm{random\_truncado}(0.3) \times 10)])\bigr)
 \end{align*}
 
-% ── ROL 2 ───────────────────────────────────────────────────────────────
+\paragraph{Transición externa — orden médica con $c = 0$.}
+\begin{align*}
+  \delta_{\mathrm{ext}}(s,\,e,\,((0,t),0))
+  = \bigl(&uCM,\;0,\;0,\;\mathrm{normal},\;est_{\mathrm{bolsa}},\;
+           \tau_{\mathrm{bolsa}}-e,\;
+           [conLog((\mathrm{detenerBomba},\;0))]\bigr)
+\end{align*}
+
+% ─────────────────────────────────────────────────────────────────────────────
 \subsection{Rol 2 – Monitoreo de flujo}
 
-Este rol modela el comportamiento reactivo del controlador frente a la retroalimentación 
-periódica enviada por el sensor de flujo. El componente mantiene un registro del último 
-caudal medido ($q_{\mathrm{med}}$) y evalúa su consistencia respecto al caudal objetivo 
-($q_{\mathrm{obj}}$). Ante una fluctuación que supere el umbral de tolerancia permitido del 
-10\%, el sistema no detiene la infusión de inmediato, sino que inicializa un mecanismo 
-de persistencia temporal gestionado por el contador discreto de desviaciones 
-($c_{\mathrm{dev}}$). Debido a que el muestreo del entorno es síncrono y ocurre con un 
-período estricto de 1 segundo, el límite de seguridad de 5 segundos se mapea formalmente 
-mediante la constante acotada $k=5$. Toda interrupción externa generada por una nueva 
-lectura del sensor obliga al modelo a calcular el descuento del tiempo transcurrido $e$ 
-sobre el temporizador de la bolsa ($t_{\mathrm{rem}}$). Este cálculo algebraico, definido 
-como $t_{\mathrm{rem}}' = t_{\mathrm{rem}} - e$, garantiza la sincronización analítica de 
-ambos ciclos de vida, impidiendo que el bombardeo continuo de eventos del sensor reinicie 
-la cuenta regresiva de la bolsa.
+Este rol modela la reacción del controlador ante la retroalimentación periódica
+del sensor de flujo. Se mantiene un registro del último caudal medido ($uCM$) y
+se evalúa su consistencia respecto al caudal objetivo ($cO$).
+
+Ante una fluctuación superior al 10\%, el sistema no detiene la infusión de
+inmediato, sino que inicializa un mecanismo de persistencia mediante el contador
+discreto de desviaciones ($tol$). Como el muestreo es síncrono con período
+estricto de 1~segundo, el límite de seguridad de 5~segundos se mapea
+formalmente mediante la constante $k = 5$.
+
+Toda lectura del sensor obliga a calcular el descuento de tiempo transcurrido $e$
+sobre el temporizador de la bolsa:
+\[
+  \tau' = \tau_{\mathrm{bolsa}} - e
+\]
+Esto garantiza la sincronización analítica de ambos ciclos de vida e impide que
+el flujo continuo de eventos del sensor reinicie la cuenta regresiva de la bolsa.
 
 \paragraph{Transición externa — recepción de medición del sensor.}
 Sea $\tau' = \tau_{\mathrm{bolsa}} - e$:
 \[
-\dext(s,\,e,\,(x,1)) =
-\begin{cases}
-  (x,\,cO,\,0,\,\mathrm{estadoCritico},\,est_{\mathrm{bolsa}},\,\tau',\,0)
+  \delta_{\mathrm{ext}}(s,\,e,\,(x,1)) =
+  \begin{cases}
+    \bigl(x,\,cO,\,0,\,\mathrm{estadoCritico},\,est_{\mathrm{bolsa}},\,\tau',\,
+      [conLog((\mathrm{alarmaCritica},0),\,(\mathrm{detenerBomba},0))]\bigr)
     \\ \quad \text{si } tol > 5 \land est_{\mathrm{flujo}} = \mathrm{estadoMedio}
-  \\[2ex]
-  (x,\,cO,\,0,\,\mathrm{estadoMedio},\,est_{\mathrm{bolsa}},\,\tau',\,0)
+    \\[2ex]
+    \bigl(x,\,cO,\,0,\,\mathrm{estadoMedio},\,est_{\mathrm{bolsa}},\,\tau',\,
+      [conLog((\mathrm{alarmaMedia},0))]\bigr)
     \\ \quad \text{si } tol > 5 \land est_{\mathrm{flujo}} = \mathrm{normal}
-  \\[2ex]
-  (x,\,cO,\,tol+1,\,est_{\mathrm{flujo}},\,est_{\mathrm{bolsa}},\,\tau',\,\tau')
-    \\ \quad \text{si } \mathrm{no\_tolerable}(cO,x)
-  \\[2ex]
-  (x,\,cO,\,0,\,est_{\mathrm{flujo}},\,est_{\mathrm{bolsa}},\,\tau',\,\tau')
+    \\[2ex]
+    \bigl(x,\,cO,\,tol+1,\,est_{\mathrm{flujo}},\,est_{\mathrm{bolsa}},\,\tau',\,
+      []\bigr)
+    \\ \quad \text{si } \mathrm{no\_tolerable}(cO,\,x)
+    \\[2ex]
+    \bigl(x,\,cO,\,0,\,est_{\mathrm{flujo}},\,est_{\mathrm{bolsa}},\,\tau',\,
+      []\bigr)
     \\ \quad \text{en otro caso}
-\end{cases}
+  \end{cases}
 \]
 
-\paragraph{Transición interna — secuencia de estado crítico.}
-La secuencia detiene el avance de la bolsa (se asume tiempo nulo) para emitir alarmas y detener la bomba.
-\begin{align*}
-\dint&(uCM,cO,tol,\mathrm{estadoCritico},est_{\mathrm{bolsa}},\tau_{\mathrm{bolsa}},0) \\
-&= (uCM,cO,tol,\mathrm{detencionCritica},est_{\mathrm{bolsa}},\tau_{\mathrm{bolsa}},0)
-\end{align*}
-
-\begin{align*}
-\dint&(uCM,cO,tol,\mathrm{detencionCritica},est_{\mathrm{bolsa}},\tau_{\mathrm{bolsa}},0) \\
-&= (uCM,cO,tol,\mathrm{estadoCritico},est_{\mathrm{bolsa}},\,\tau_{\mathrm{bolsa}},\,\infty)
-\end{align*}
+Cuando se detecta la condición crítica, la cola
+$[(\mathrm{alarmaCritica},0),\,(\mathrm{detenerBomba},0)]$ garantiza que
+ambas salidas se emiten en orden en dos eventos internos consecutivos
+instantáneos, sin necesidad de estados intermedios adicionales.
 
 \paragraph{Transición externa — confirmación del enfermero.}
-Devuelve el estado de flujo a normal.
+Devuelve el estado de flujo a normal y reprograma el ajuste de caudal
+de forma inmediata:
 \begin{align*}
-\dext(s,\,e,\,(\mathrm{confirmacionEnfermero},3)) = 
-  (&uCM,\,cO,\,0,\,\mathrm{normal},\,est_{\mathrm{bolsa}}, \\
-   &\tau_{\mathrm{bolsa}}-e,\,\tau_{\mathrm{bolsa}}-e)
+  \delta_{\mathrm{ext}}(s,\,e,\,(\mathrm{confirmacionEnfermero},3))
+  = \bigl(&uCM,\;cO,\;0,\;\mathrm{normal},\;est_{\mathrm{bolsa}},\;
+           \tau_{\mathrm{bolsa}}-e, \\
+          &[conLog((\mathrm{ajustarCaudal}(cO-uCM),\;0)])\bigr)
 \end{align*}
 
-% ── ROL 3 ───────────────────────────────────────────────────────────────
+% ─────────────────────────────────────────────────────────────────────────────
 \subsection{Rol 3 – Ciclo de bolsa}
 
-Gestiona independientemente el fin de bolsa y su detención obligatoria transcurridos los 60 segundos.
-Se supone que al pasar los 60 segundos, la bolsa queda vacia
+Gestiona independientemente el fin de bolsa y su detención obligatoria
+transcurridos 60~segundos. Se supone que al pasar ese tiempo la bolsa
+queda vacía.
 
-\paragraph{Transición externa — recepción de señal de fin de bolsa.}
+\paragraph{Transición externa — señal de fin de bolsa.}
 \begin{align*}
-\dext(s,\,e,\,(\mathrm{finBolsa},2)) = 
-  (&uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,\mathrm{bolsaBaja}, \\
-   &\tau_{\mathrm{bolsa}}-e,\,0)
+  \delta_{\mathrm{ext}}(s,\,e,\,(\mathrm{finBolsa},2))
+  = \bigl(&uCM,\;cO,\;tol,\;est_{\mathrm{flujo}},\;\mathrm{bolsaBaja},\;
+           \tau_{\mathrm{bolsa}}-e,\;
+           [(\mathrm{alarmaBaja},\;0)]\bigr)
 \end{align*}
 
-\paragraph{Transiciones internas.}
-Luego de emitir la alarma por bolsa baja, arranca el temporizador de 60 segundos:
+\paragraph{Transiciones internas — ciclo de vida de la bolsa.}
+
+Tras emitir la alarma por bolsa baja, la transición interna consume
+$(\mathrm{alarmaBaja}, 0)$ y, al quedar la cola vacía, avanza al estado
+\textit{esperandoDetencion} arrancando el temporizador de 60~segundos:
 \begin{align*}
-\dint&(uCM,cO,tol,est_{\mathrm{flujo}},\mathrm{bolsaBaja},\tau_{\mathrm{bolsa}},0) \\
-&= (uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,\mathrm{esperandoDetencion},\,60,\,60)
+  \delta_{\mathrm{int}}&(uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,
+    \mathrm{bolsaBaja},\,\tau_{\mathrm{bolsa}},\,[(\mathrm{alarmaBaja},0)]) \\
+  &= (uCM,\;cO,\;tol,\;est_{\mathrm{flujo}},\;
+      \mathrm{esperandoDetencion},\;60,\;[])
 \end{align*}
 
-Luego de transcurridos los 60 segundos de espera (cuando $\mu$ se agota):
+Transcurridos los 60~segundos, la transición interna con cola vacía activa
+la detención de la bomba:
 \begin{align*}
-\dint&(uCM,cO,tol,est_{\mathrm{flujo}},\mathrm{esperandoDetencion},\tau_{\mathrm{bolsa}},\mu) \\
-&= (uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,\mathrm{vacia},\,0,\,0)
+  \delta_{\mathrm{int}}&(uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,
+    \mathrm{esperandoDetencion},\,0,\,[]) \\
+  &= (uCM,\;cO,\;tol,\;est_{\mathrm{flujo}},\;
+      \mathrm{vacia},\;0,\;[conLog((\mathrm{detenerBomba},\;0))])
 \end{align*}
 
-Luego de emitir la detención por bolsa vacía:
+Tras emitir \texttt{detenerBomba} por bolsa vacía, el controlador queda
+en reposo permanente:
 \begin{align*}
-\dint&(uCM,cO,tol,est_{\mathrm{flujo}},\mathrm{vacia},0,0) \\
-&= (uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,\mathrm{vacia},\,\infty,\,\infty)
+  \delta_{\mathrm{int}}&(uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,
+    \mathrm{vacia},\,0,\,[(\mathrm{detenerBomba},0)]) \\
+  &= (uCM,\;cO,\;tol,\;est_{\mathrm{flujo}},\;
+      \mathrm{vacia},\;\infty,\;[])
 \end{align*}
 
-En caso de que ocurra una interrupción sin cambio de estado mayor:
-\begin{align*}
-\dint&(uCM,cO,tol,est_{\mathrm{flujo}},est_{\mathrm{bolsa}},\tau_{\mathrm{bolsa}},\mu) \\
-&= (uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,est_{\mathrm{bolsa}},\,\tau_{\mathrm{bolsa}},\,\infty)
-\end{align*}
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Rol 4 – Función de salida y transición interna general}
+
+\paragraph{Función de salida.}
+Siempre emite la acción de la cabeza de la cola, ignorando su demora
+(ya consumida por el avance temporal):
+\[
+  \lambda(\ldots,\,[(a_1,d_1),(a_2,d_2),\ldots],\,\ldots) \;=\; a_1
+\]
+
+\paragraph{Transición interna general.}
+Consume el par cabeza de la cola; el resto del estado no cambia
+(salvo los casos especiales del Rol~3 descritos arriba):
+\[
+  \delta_{\mathrm{int}}(\ldots,\,[(a_1,d_1),(a_2,d_2),\ldots],\,\ldots)
+  \;=\; (\ldots,\,[(a_2,d_2),\ldots],\,\ldots)
+\]
+
+Cuando la cola queda vacía, $ta(s) = \infty$ y el controlador entra en
+reposo pasivo hasta el próximo evento externo.
+
+\paragraph{Resumen de demoras por acción.}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Origen & Cola encolada & Demora \\
+\midrule
+Orden médica $c > 0$   & $[(\mathrm{ajustarCaudal}(\cdot),\, \mathit{rand}_{0.3}\times 10)]$ & hasta 3\,s \\
+Orden médica $c = 0$   & $[(\mathrm{detenerBomba},\,0)]$                                      & inmediata \\
+Sensor $\to$ crítico   & $[(\mathrm{alarmaCritica},0),\,(\mathrm{detenerBomba},0)]$           & inmediata \\
+Sensor $\to$ medio     & $[(\mathrm{alarmaMedia},0)]$                                         & inmediata \\
+Fin de bolsa           & $[(\mathrm{alarmaBaja},0)]$                                          & inmediata \\
+Bolsa vacía (interna)  & $[(\mathrm{detenerBomba},0)]$                                        & inmediata \\
+Confirmación enfermero & $[(\mathrm{ajustarCaudal}(\cdot),0)]$                                & inmediata \\
+\bottomrule
+\end{tabular}
+\end{center}
 
 \paragraph{Dinámica temporal y reactividad del controlador.}
-Esta última regla de transición es fundamental para el comportamiento dinámico del 
-sistema. Por ejemplo, al producirse el escalamiento hacia el estado 
-$\mathrm{estadoMedio}$, la función de transición interna asigna un avance 
-temporal infinito ($\mu = \infty$), lo que teóricamente deja al controlador en un 
-estado de reposo o ``espera pasiva''. 
-
-Sin embargo, el flujo de la simulación no se detiene de forma permanente debido a la 
-naturaleza periódica del entorno: el componente \textbf{Sensor de flujo} continúa 
-emitiendo eventos de forma síncrona cada 1 segundo[cite: 42, 63]. Cada una de estas mediciones 
-provoca la ejecución inmediata de una transición externa ($\delta_{ext}$), 
-forzando al controlador a despertar, evaluar el desvío actual y reanudar activamente 
-la lógica de monitoreo de la infusión.
-
-\paragraph{Avance temporal.}
-\[
-ta(s) = \mu
-\]
-
-% ── ROL 4 ───────────────────────────────────────────────────────────────
-\subsection{Rol 4 – Función de salida}
-
-La función de salida lee el estado compuesto completo y determina la
-acción de mayor prioridad. Los casos se evalúan en el orden indicado;
-el primero que se cumple es el único que se emite.
-
-\[
-\lambda(s) =
-\begin{cases}
-  (\mathrm{alarmaCritica},0), (s,9)
-    & \text{si } est_{\mathrm{flujo}} = \mathrm{estadoCritico} \land \mu = 0
-  \\[2ex]
-  (\mathrm{detenerBomba},1) , (s,9)
-    & \text{si } est_{\mathrm{flujo}} = \mathrm{detencionCritica} 
-    \\ & \quad \lor est_{\mathrm{bolsa}} = \mathrm{vacia} \lor cO = 0
-  \\[2ex]
-  (\mathrm{alarmaBaja},0), (s,9)
-    & \text{si } est_{\mathrm{bolsa}} = \mathrm{bolsaBaja} \land \mu = 0
-  \\[2ex]
-  (\mathrm{alarmaMedia},0), (s,9)
-    & \text{si } est_{\mathrm{flujo}} = \mathrm{estadoMedio} \land \mu = 0
-  \\[2ex]
-  (\mathrm{ajustarCaudal}(cO-uCM),1), (s,9)
-    & \text{si } uCM \neq cO \land est_{\mathrm{flujo}} = \mathrm{normal}
-  \\[2ex]
-  \mathrm{(s,9)}
-    & \text{si } uCM = cO
-\end{cases}
-\]
+Con la cola vacía el controlador queda en reposo pasivo. Sin embargo, el flujo
+de simulación no se detiene de forma permanente debido a la naturaleza periódica
+del entorno: el \textbf{Sensor de flujo} continúa emitiendo eventos de forma
+síncrona cada 1~segundo. Cada medición provoca la ejecución inmediata de una
+transición externa ($\delta_{\mathrm{ext}}$), forzando al controlador a
+despertar, evaluar el desvío actual y reanudar activamente la lógica de
+monitoreo de la infusión.
 
 \clearpage
 \section{Bomba de infusión}
@@ -894,7 +969,7 @@ Una entrada del log es un par $(s_{\mathrm{ctrl}},\, t)$ donde $s_{\mathrm{ctrl}
 absoluto de captura. El espacio de estados del logger es:
 
 \begin{align*}
-  X &= S_{\mathrm{ctrl}} \times \{9\} \\[4pt]
+  X &= (registarEvento, S_{\mathrm{ctrl}}) \times \{0\} \\[4pt]
   Y &= \varnothing \\[4pt]
   S &= \mathcal{L}(S_{\mathrm{ctrl}} \times \mathbb{R}_{\ge 0})
        \times \mathbb{R}_{\ge 0}
