@@ -10,6 +10,7 @@
 \usepackage{booktabs}
 \usepackage{xcolor}
 \usepackage{array}
+\usepackage{microtype} %
 \geometry{margin=2.5cm}
 
 \usetikzlibrary{automata, positioning, arrows.meta, fit, backgrounds}
@@ -133,6 +134,137 @@ node {$\dint(k,c,t) = (k,caudal(k),tiempo(k))$}
 
 \end{tikzpicture}
 \end{center}
+
+\clearpage
+% ── GENERADOR FIN DE BOLSA ───────────────────────────────────────────
+\section{Generador Fin de Bolsa }
+
+Este componente simula de manera abstracta el vaciado de la solución intravenosa. Escucha pasivamente las órdenes emitidas por el cuerpo médico para conocer el ritmo de infusión configurado y calcula de forma estocástica la latencia de drenaje físico de la bolsa.
+
+\paragraph{Puertos y estructura del estado.}
+\begin{align*}
+  X &= \bigl( \{0, 50, 100, 150, 200\} \times \{2, 4, 6, 8, 12\} \bigr) \times \{0\} \\[4pt]
+  Y &= \{\mathit{finBolsa}\} \times \{0\} \\[4pt]
+  S &= \{\text{esperando}, \text{drenando}\} \times (\mathbb{R}_0^+ \cup \{\infty\})
+\end{align*}
+
+La tupla de estado se describe como $s = (\mathit{fase},\, \sigma)$, donde:
+\begin{itemize}
+  \item $\mathit{fase} \in \{\text{esperando}, \text{drenando}\}$: Indica si el módulo se encuentra pasivo o si la bomba está consumiendo activamente el volumen de la solución.
+  \item $\sigma \in \mathbb{R}_0^+ \cup \{\infty\}$: Tiempo teórico restante hasta el desabastecimiento de la bolsa.
+\end{itemize}
+
+\paragraph{Estado inicial.}
+\[
+  s_0 = (\text{esperando},\; \infty)
+\]
+
+\paragraph{Funciones de transición y salida.}
+
+\paragraph{Transición externa ($\dext$).}
+Al ingresar una nueva orden médica por el puerto 0, si el caudal es positivo ($c > 0$), el modelo conmuta a la fase de vaciado activo y reprograma el temporizador utilizando la función de distribución truncada $T_{\mathrm{bolsa}}(c)$. Si la orden detiene el flujo ($c = 0$), el generador pasa a espera pasiva:
+\[
+  \dext\bigl((\mathit{fase},\; \sigma),\, e,\, ((c, t),\, 0)\bigr) =
+  \begin{cases}
+    \bigl(\text{drenando},\; T_{\mathrm{bolsa}}(c)\bigr) & \text{si } c > 0 \\[4pt]
+    \bigl(\text{esperando},\; \infty\bigr) & \text{si } c = 0
+  \end{cases}
+\]
+
+Donde la función de tiempo estocástico remanente responde a los intervalos de consumo de la bomba:
+\[
+  T_{\mathrm{bolsa}}(c) = 
+  \begin{cases}
+    \text{rand}(5, 10) & \text{si } 150 \le c \le 200 \\[4pt]
+    \text{rand}(10, 15) & \text{si } 100 \le c < 150 \\[4pt]
+    \text{rand}(15, 20) & \text{si } 50 \le c < 100 \\[4pt]
+    \text{rand}(20, 30) & \text{si } 0 < c < 50
+  \end{cases}
+\]
+
+\paragraph{Transición interna ($\dint$).}
+Una vez completado el tiempo de drenaje programado ($\sigma = 0$), el modelo asume que el fluido se ha agotado por completo y retorna inmediatamente a su condición pasiva de resguardo:
+\[
+  \dint(\mathit{fase}, \sigma) = (\text{esperando},\, \infty)
+\]
+
+\paragraph{Función de salida ($\lambda$).}
+Emite la notificación física del vaciado a través de su puerto de salida en el instante exacto del colapso de volumen:
+\[
+  \lambda(\mathit{fase}, \sigma) =
+  \begin{cases}
+    (\mathit{finBolsa},\, 0) & \text{si } \mathit{fase} = \text{drenando} \\[4pt]
+    \varnothing & \text{en otro caso}
+  \end{cases}
+\]
+
+\paragraph{Avance temporal ($ta$).}
+\[
+  ta(\mathit{fase}, \sigma) = \sigma
+\]
+
+
+\clearpage
+\section{Generador de Confirmación de Enfermero}
+
+Este componente modela las rondas operativas aleatorias del personal de enfermería para supervisar el estado de la infusión. El intervalo temporal de estas visitas se adapta dinámicamente según la urgencia de control de la orden médica vigente ($t_{\mathrm{act}}$), emulando una mayor rigurosidad en cuadros críticos.
+
+\paragraph{Puertos y estructura del estado.}
+\begin{align*}
+  X &= \bigl( \{0, 50, 100, 150, 200\} \times \{2, 4, 6, 8, 12\} \bigr) \times \{0\} \\[4pt]
+  Y &= \{\mathit{confirmacionEnfermero}\} \times \{0\} \\[4pt]
+  S &= \{\text{ciclando}\} \times \mathbb{R}_0^+ \times \{2, 4, 6, 8, 12\}
+\end{align*}
+
+La tupla de estado se formaliza como $s = (\mathit{fase},\; \sigma,\; t_{\mathrm{act}})$, donde:
+\begin{itemize}
+  \item $\mathit{fase} = \text{ciclando}$: Fase operativa constante encargada de sostener la periodicidad de los rondines.
+  \item $\sigma \in \mathbb{R}_0^+$: Tiempo remanente hasta la aparición física del enfermero en la locación.
+  \item $t_{\mathrm{act}} \in \{2, 4, 6, 8, 12\}$: Variable de memoria encargada de registrar el intervalo de control médico activo.
+\end{itemize}
+
+\paragraph{Estado inicial.}
+Se modela considerando un paciente en condiciones de estabilidad base por defecto:
+\[
+  s_0 = (\text{ciclando},\; \infty,\; 12)
+\]
+
+\paragraph{Funciones de transición y salida.}
+
+\paragraph{Transición externa ($\dext$).}
+Al capturar una nueva prescripción médica, el modelo asimila el nuevo parámetro de tiempo clínico ($t_{\mathrm{nuevo}}$) y recalcula la frecuencia de guardia mediante la función probabilística de rondas $T_{\mathrm{ronda}}(t)$:
+\[
+  \dext\bigl((\mathit{fase},\; \sigma,\; t_{\mathrm{viejo}}),\, e,\, ((c, t_{\mathrm{nuevo}}),\, 0)\bigr) = \bigl(\text{ciclando},\; T_{\mathrm{ronda}}(t_{\mathrm{nuevo}}),\; t_{\mathrm{nuevo}}\bigr)
+\]
+
+Las ventanas aleatorias de confirmación en función de la criticidad horaria adoptan la siguiente forma:
+\[
+  T_{\mathrm{ronda}}(t) = 
+  \begin{cases}
+    \text{rand}(1, 3) & \text{si } t = 2 \\[4pt]
+    \text{rand}(3, 5) & \text{si } t = 4 \\[4pt]
+    \text{rand}(5, 8) & \text{si } t = 6 \\[4pt]
+    \text{rand}(7, 10) & \text{si } t = 8 \\[4pt]
+    \text{rand}(10, 15) & \text{si } t = 12
+  \end{cases}
+\]
+
+\paragraph{Transición interna ($\dint$).}
+Cuando el temporizador se agota ($\sigma = 0$), se ejecuta el evento de control de enfermería. El modelo realiza la transición para reprogramar el próximo chequeo cíclico basándose de manera continua en su valor de memoria activa ($t_{\mathrm{act}}$):
+\[
+  \dint(\mathit{fase},\, \sigma,\, t_{\mathrm{act}}) = \bigl(\text{ciclando},\; T_{\mathrm{ronda}}(t_{\mathrm{act}}),\; t_{\mathrm{act}}\bigr)
+\]
+
+\paragraph{Función de salida ($\lambda$).}
+Emite el pulso de presencia y confirmación del enfermero hacia los actuadores y módulos de alarma por el puerto 0:
+\[
+  \lambda(\mathit{fase},\, \sigma,\, t_{\mathrm{act}}) = (\mathit{confirmacionEnfermero},\, 0)
+\]
+
+\paragraph{Avance temporal ($ta$).}
+\[
+  ta(\mathit{fase},\, \sigma,\, t_{\mathrm{act}}) = \sigma
+\]
 
 \section{Sensor de flujo}
 
@@ -372,7 +504,7 @@ Devuelve el estado de flujo a normal.
   (&uCM,\,cO,\,0,\,\mathrm{normal},\,est_{\mathrm{bolsa}}, \\
    &\tau_{\mathrm{bolsa}}-e,\,\tau_{\mathrm{bolsa}}-e)
 \end{align*}
-\clearpage
+
 % ── ROL 3 ───────────────────────────────────────────────────────────────
 \subsection{Rol 3 – Ciclo de bolsa}
 
@@ -515,7 +647,7 @@ Emite el caudal real actualizado:
   s_0 \;=\; (0,\;\mathrm{detenida},\;\infty).
 \]
 
-\clearpage
+
 
 \subsection{Diagrama de estados}
 
@@ -855,5 +987,241 @@ El bloque actúa como sumidero puro (\textit{sink}):
 \[
   ta(s) = \infty
 \]
+
+\section{Modelo DEVS Acoplado del Sistema de Bomba de Infusión}
+
+El sistema completo se modela mediante un DEVS acoplado:
+
+\[
+N =
+\left<
+X_N,\,
+Y_N,\,
+D,\,
+\{M_d\},\,
+EIC,\,
+EOC,\,
+IC,\,
+Select
+\right>
+\]
+
+donde:
+
+\[
+D =
+\{
+M_{gen},
+M_{ctrl},
+M_{bomba},
+M_{sensor},
+M_{alarmas},
+M_{logger},
+M_{bolsa},
+M_{enf}
+\}
+\]
+
+siendo:
+
+\begin{itemize}
+\item $M_{gen}$: Generador de órdenes médicas.
+\item $M_{ctrl}$: Controlador.
+\item $M_{bomba}$: Bomba de infusión.
+\item $M_{sensor}$: Sensor de flujo.
+\item $M_{alarmas}$: Módulo de alarmas.
+\item $M_{logger}$: Módulo de registro.
+\item $M_{bolsa}$: Generador de fin de bolsa.
+\item $M_{enf}$: Generador de confirmación de enfermero.
+\end{itemize}
+
+\subsection{Puertos externos}
+
+El sistema se considera cerrado respecto de los estímulos externos, ya que todos los eventos relevantes son generados internamente por los modelos acoplados.
+
+\[
+X_N = \varnothing
+\]
+
+Las salidas observables del sistema corresponden a las alarmas emitidas hacia el entorno:
+
+\[
+Y_N =
+\{
+\mathrm{alarmaBaja},
+\mathrm{alarmaMedia},
+\mathrm{alarmaCritica}
+\}
+\times \{0\}
+\]
+
+\subsection{Acoplamientos de entrada externa}
+
+Al no existir entradas externas:
+
+\[
+EIC = \varnothing
+\]
+
+\subsection{Acoplamientos de salida externa}
+
+Las alarmas generadas por el módulo de alarmas son exportadas al entorno:
+
+\[
+EOC =
+\{
+[(M_{alarmas},0),(N,0)]
+\}
+\]
+
+\subsection{Acoplamientos internos}
+
+Las conexiones entre los modelos atómicos son:
+
+\[
+IC =
+\{
+\]
+
+\[
+[(M_{gen},0),(M_{ctrl},0)],
+\]
+
+\[
+[(M_{gen},0),(M_{bolsa},0)],
+\]
+
+\[
+[(M_{gen},0),(M_{enf},0)],
+\]
+
+\[
+[(M_{ctrl},1),(M_{bomba},1)],
+\]
+
+\[
+[(M_{bomba},0),(M_{sensor},0)],
+\]
+
+\[
+[(M_{sensor},0),(M_{ctrl},1)],
+\]
+
+\[
+[(M_{bolsa},0),(M_{ctrl},2)],
+\]
+
+\[
+[(M_{enf},0),(M_{ctrl},3)],
+\]
+
+\[
+[(M_{enf},0),(M_{alarmas},1)],
+\]
+
+\[
+[(M_{ctrl},0),(M_{alarmas},0)],
+\]
+
+\[
+[(M_{ctrl},9),(M_{logger},9)]
+\]
+
+\[
+\}
+\]
+
+Los acoplamientos anteriores implementan:
+
+\begin{itemize}
+\item La distribución de órdenes médicas hacia el controlador y los generadores auxiliares.
+\item El lazo cerrado de control:
+\[
+Controlador \rightarrow Bomba \rightarrow Sensor \rightarrow Controlador
+\]
+\item La detección de fin de bolsa.
+\item La confirmación periódica del enfermero.
+\item La propagación de alarmas.
+\item El registro histórico de los estados del controlador.
+\end{itemize}
+
+\subsection{Función de desempate}
+
+Para resolver eventos simultáneos se define una prioridad fija entre modelos:
+
+\[
+M_{gen}
+>
+M_{ctrl}
+>
+M_{bomba}
+>
+M_{sensor}
+>
+M_{bolsa}
+>
+M_{enf}
+>
+M_{alarmas}
+>
+M_{logger}
+\]
+
+Por lo tanto:
+
+\[
+Select(H)
+=
+\text{el primer elemento de } H
+\text{ según el orden anterior}
+\]
+
+\subsection{Diagrama de acoplamiento}
+
+% sino poner diagrama de miro
+
+\begin{center}
+\begin{tikzpicture}[
+node distance=2.5cm,
+>=stealth,
+every node/.style={draw, rounded corners, align=center}
+]
+
+\node (gen) {Generador\\Órdenes};
+
+\node[right=3cm of gen] (ctrl) {Controlador};
+
+\node[below=of ctrl] (bomba) {Bomba};
+
+\node[below=of bomba] (sensor) {Sensor};
+
+\node[right=4cm of ctrl] (alarm) {Módulo\\Alarmas};
+
+\node[right=4cm of sensor] (logger) {Logger};
+
+\node[below left=2cm and 2cm of ctrl] (bolsa) {Generador\\Fin Bolsa};
+
+\node[above left=2cm and 2cm of ctrl] (enf) {Generador\\Enfermero};
+
+\draw[->] (gen) -- (ctrl);
+\draw[->] (gen) -- (bolsa);
+\draw[->] (gen) -- (enf);
+
+\draw[->] (ctrl) -- (bomba);
+\draw[->] (bomba) -- (sensor);
+\draw[->] (sensor) -- (ctrl);
+
+\draw[->] (bolsa) -- (ctrl);
+
+\draw[->] (enf) -- (ctrl);
+\draw[->] (enf) -- (alarm);
+
+\draw[->] (ctrl) -- (alarm);
+
+\draw[->] (ctrl) -- (logger);
+
+\end{tikzpicture}
+\end{center}
+
 
 \end{document}
