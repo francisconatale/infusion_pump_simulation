@@ -245,6 +245,8 @@ bloquee a la otra.
      \underbrace{\mathbb{R}_0^+ \cup \{\infty\}}_{\tau_{\mathrm{bolsa}}}
      \times
      \underbrace{\mathbb{R}_0^+ \cup \{\infty\}}_{\mu}
+     \times
+     \underbrace{boolean}_{\mathrm{logger}}
 \end{align*}
 
 donde los dominios discretos de estado se definen como:
@@ -311,7 +313,7 @@ automática.
 \paragraph{Transición externa — recepción de orden médica.}
 \begin{align*}
 \dext(s,\,e,\,((c,t),0)) = (&uCM,\,c,\,0,\,\mathrm{normal},\,est_{\mathrm{bolsa}}, \\
-                            &\tau_{\mathrm{bolsa}}-e,\,0)
+                            &\tau_{\mathrm{bolsa}}-e,\,random\_truncado(0.3) * 10)
 \end{align*}
 
 % ── ROL 2 ───────────────────────────────────────────────────────────────
@@ -438,27 +440,28 @@ el primero que se cumple es el único que se emite.
 \[
 \lambda(s) =
 \begin{cases}
-  (\mathrm{alarmaCritica},0)
+  (\mathrm{alarmaCritica},0), (s,9)
     & \text{si } est_{\mathrm{flujo}} = \mathrm{estadoCritico} \land \mu = 0
   \\[2ex]
-  (\mathrm{detenerBomba},1)
+  (\mathrm{detenerBomba},1) , (s,9)
     & \text{si } est_{\mathrm{flujo}} = \mathrm{detencionCritica} 
     \\ & \quad \lor est_{\mathrm{bolsa}} = \mathrm{vacia} \lor cO = 0
   \\[2ex]
-  (\mathrm{alarmaBaja},0)
+  (\mathrm{alarmaBaja},0), (s,9)
     & \text{si } est_{\mathrm{bolsa}} = \mathrm{bolsaBaja} \land \mu = 0
   \\[2ex]
-  (\mathrm{alarmaMedia},0)
+  (\mathrm{alarmaMedia},0), (s,9)
     & \text{si } est_{\mathrm{flujo}} = \mathrm{estadoMedio} \land \mu = 0
   \\[2ex]
-  (\mathrm{ajustarCaudal}(cO-uCM),1)
+  (\mathrm{ajustarCaudal}(cO-uCM),1), (s,9)
     & \text{si } uCM \neq cO \land est_{\mathrm{flujo}} = \mathrm{normal}
   \\[2ex]
-  (\mathrm{ajustarCaudal}(0),1)
+  \mathrm{(s,9)}
     & \text{si } uCM = cO
 \end{cases}
 \]
 
+\clearpage
 \section{Bomba de infusión}
 
 La bomba modifica el caudal real en respuesta a comandos del controlador.
@@ -480,9 +483,9 @@ La bomba modifica el caudal real en respuesta a comandos del controlador.
   \;=\; (0,\;\mathrm{detenida},\;0)
 \\[6pt]
 \dext&\bigl((cR,\,est,\,\mu),\;e,\;(\mathrm{ajustarBomba}(\mathit{dif}),\,1)\bigr)
-  \;=\; \Bigl(cR + \frac{\mathit{dif}}{\mathrm{aleatorio}()},\;
+  \;=\; \Bigl(cR + \frac{\mathit{dif}}{{aleatorio}()},\;
               \mathrm{corriendo},\;
-              \mathrm{random\_truncado}(0.3)\Bigr)
+              \mathrm{random\_truncado}(0.5)\Bigr)
 \end{align*}
 
 \noindent
@@ -511,6 +514,8 @@ Emite el caudal real actualizado:
 \[
   s_0 \;=\; (0,\;\mathrm{detenida},\;\infty).
 \]
+
+\clearpage
 
 \subsection{Diagrama de estados}
 
@@ -729,5 +734,126 @@ $\sigma$ es el tiempo hasta la próxima transición interna.
 
 Las transiciones punteadas representan $\dext$ con puerto $p=1$
 (confirmación del enfermero), que reinicia el módulo a \textit{noAlarma}.
+
+\clearpage
+\section{Módulo de Registro con Historial Acumulativo}
+
+Este componente almacena cronológicamente snapshots del estado completo del
+controlador, capturados en cada transición que éste realiza. A partir de esta
+secuencia es posible reconstruir la trayectoria completa de la simulación.
+
+% ── Puertos y Estado ───────────────────────────────────────────────────
+\subsection{Puertos y estructura del estado}
+
+Definimos el espacio de estados del controlador que el logger recibe como:
+\[
+  S_{\mathrm{ctrl}} = \mathbb{R}_{\ge 0}
+                    \times \mathbb{R}_{\ge 0}
+                    \times \mathbb{N}_0
+                    \times E_{\mathrm{flujo}}
+                    \times E_{\mathrm{bolsa}}
+                    \times (\mathbb{R}_0^+ \cup \{\infty\})
+                    \times (\mathbb{R}_0^+ \cup \{\infty\})
+\]
+
+Una entrada del log es un par $(s_{\mathrm{ctrl}},\, t)$ donde $s_{\mathrm{ctrl}}
+\in S_{\mathrm{ctrl}}$ es el snapshot y $t \in \mathbb{R}_{\ge 0}$ es el tiempo
+absoluto de captura. El espacio de estados del logger es:
+
+\begin{align*}
+  X &= S_{\mathrm{ctrl}} \times \{9\} \\[4pt]
+  Y &= \varnothing \\[4pt]
+  S &= \mathcal{L}(S_{\mathrm{ctrl}} \times \mathbb{R}_{\ge 0})
+       \times \mathbb{R}_{\ge 0}
+       \times \{\infty\}
+\end{align*}
+
+La tupla de estado $s \in S$ se define como:
+\[
+  s = (\mathit{lista},\; t_{\mathrm{acum}},\; \mu)
+\]
+
+\begin{itemize}
+  \item $\mathit{lista}$: secuencia ordenada de pares $(s_{\mathrm{ctrl}},\, t)$,
+        donde cada nodo guarda el snapshot completo del controlador y su tiempo
+        absoluto de ocurrencia.
+  \item $t_{\mathrm{acum}} \in \mathbb{R}_{\ge 0}$: acumulador de tiempo global
+        de la simulación.
+  \item $\mu = \infty$: avance temporal permanentemente infinito; el bloque
+        reacciona de forma puramente pasiva ante las entradas.
+\end{itemize}
+
+\paragraph{Estado inicial.}
+\[
+  s_0 = ([\;],\; 0,\; \infty)
+\]
+
+% ── Función de salida del controlador ────────────────────────────────
+\subsection{Emisión del snapshot desde el controlador}
+
+Para que el logger reciba el estado, la función de salida del controlador
+$\lambda_{\mathrm{ctrl}}$ emite en paralelo la acción operativa (puerto~1) y
+el snapshot de estado actual (puerto~9):
+
+\[
+  \lambda_{\mathrm{ctrl}}(s) =
+  \begin{cases}
+    \bigl(\,\text{[salida operativa]},\;1\bigr)
+    \;\cup\;
+    \bigl(\,s,\;9\bigr)
+    & \text{si } \mu = 0
+    \\[6pt]
+    \bigl(\,s,\;9\bigr)
+    & \text{en otro caso}
+  \end{cases}
+\]
+
+\noindent
+donde $s = (uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,est_{\mathrm{bolsa}},
+\,\tau_{\mathrm{bolsa}},\,\mu)$ es el estado completo justo antes de ejecutar
+$\dint$, y ``salida operativa'' refiere a los casos ya definidos en la
+función $\lambda$ del controlador (Rol~4). Nótese que el snapshot se emite
+en \emph{toda} transición interna, no sólo en las que producen alarmas o
+ajustes, garantizando que el logger capture también las transiciones de
+espera pasiva.
+
+% ── Funciones de Transición ───────────────────────────────────────────
+\subsection{Funciones de transición}
+
+\paragraph{Transición externa ($\dext$).}
+Al recibir un snapshot del controlador, el logger actualiza su acumulador
+y anexa el par al final de la lista.
+
+Sea $\mathit{lista} \mathbin{\Vert} (s_{\mathrm{ctrl}},\, t)$ la operación de
+anexar un elemento al final de la secuencia:
+
+\[
+  \dext\bigl((\mathit{lista},\; t_{\mathrm{acum}},\; \infty),\;
+             e,\;
+             (s_{\mathrm{ctrl}},\; 9)\bigr)
+  \;=\;
+  \bigl(\,
+    \mathit{lista} \mathbin{\Vert} (s_{\mathrm{ctrl}},\; t_{\mathrm{acum}} + e),\;
+    t_{\mathrm{acum}} + e,\;
+    \infty
+  \bigr)
+\]
+
+\paragraph{Transición interna ($\dint$).}
+Dado que $\mu = \infty$, la transición interna jamás se ejecuta:
+\[
+  \dint(s) = s
+\]
+
+\paragraph{Función de salida ($\lambda$).}
+El bloque actúa como sumidero puro (\textit{sink}):
+\[
+  \lambda(s) = \varnothing
+\]
+
+\paragraph{Avance temporal ($ta$).}
+\[
+  ta(s) = \infty
+\]
 
 \end{document}
