@@ -10,7 +10,8 @@
 \usepackage{booktabs}
 \usepackage{xcolor}
 \usepackage{array}
-\usepackage{microtype} %
+\usepackage{microtype} 
+\usepackage{graphicx} 
 \geometry{margin=2.5cm}
 
 \usetikzlibrary{automata, positioning, arrows.meta, fit, backgrounds}
@@ -358,7 +359,7 @@ bloquee a la otra.
      \;\cup\; \{\mathrm{finBolsa}\}\!\times\!\{2\}
      \;\cup\; \{\mathrm{confirmacionEnfermero}\}\!\times\!\{3\}
   \\[4pt]
-  Y &= \{\mathrm{alarmaBaja},\mathrm{alarmaMedia},\mathrm{alarmaCritica}\}
+Y &= \{\mathrm{alarmaBaja},\mathrm{alarmaMedia},\mathrm{alarmaCritica}\}
        \!\times\!\{0\}
      \;\cup\;
      \{\mathrm{ajustarCaudal},\mathrm{detenerBomba},\mathrm{registrarEvento}\}
@@ -1178,50 +1179,12 @@ Select(H)
 
 \subsection{Diagrama de acoplamiento}
 
-% sino poner diagrama de miro
-
-\begin{center}
-\begin{tikzpicture}[
-node distance=2.5cm,
->=stealth,
-every node/.style={draw, rounded corners, align=center}
-]
-
-\node (gen) {Generador\\Órdenes};
-
-\node[right=3cm of gen] (ctrl) {Controlador};
-
-\node[below=of ctrl] (bomba) {Bomba};
-
-\node[below=of bomba] (sensor) {Sensor};
-
-\node[right=4cm of ctrl] (alarm) {Módulo\\Alarmas};
-
-\node[right=4cm of sensor] (logger) {Logger};
-
-\node[below left=2cm and 2cm of ctrl] (bolsa) {Generador\\Fin Bolsa};
-
-\node[above left=2cm and 2cm of ctrl] (enf) {Generador\\Enfermero};
-
-\draw[->] (gen) -- (ctrl);
-\draw[->] (gen) -- (bolsa);
-\draw[->] (gen) -- (enf);
-
-\draw[->] (ctrl) -- (bomba);
-\draw[->] (bomba) -- (sensor);
-\draw[->] (sensor) -- (ctrl);
-
-\draw[->] (bolsa) -- (ctrl);
-
-\draw[->] (enf) -- (ctrl);
-\draw[->] (enf) -- (alarm);
-
-\draw[->] (ctrl) -- (alarm);
-
-\draw[->] (ctrl) -- (logger);
-
-\end{tikzpicture}
-\end{center}
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=1.2\textwidth]{devs_version_5.jpg} 
+    \caption{Diagrama de acoplamiento del sistema de bomba de infusión.}
+    \label{fig:mi_imagen}
+\end{figure}
 
 
 \end{document}
