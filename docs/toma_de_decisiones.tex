@@ -1,0 +1,91 @@
+\documentclass[11pt]{article}
+
+% --- Paquetes ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+
+\title{Bitácora de decisiones de modelado}
+\author{}
+\date{}
+
+\begin{document}
+
+\section{Decisión de modelado: Generador Fin de Bolsa}
+
+\noindent\textbf{Componente:} Generador Fin de Bolsa \\
+\textbf{Evento:} \textit{finBolsa}
+
+\paragraph{Problema.}
+El evento \textit{finBolsa} depende del tiempo de vaciado de una bolsa, pero el estado no incluye volumen inicial ni volumen remanente. Por lo tanto, el tiempo real de agotamiento no es observable ni calculable de forma determinista.
+
+\paragraph{Opciones.}
+\begin{enumerate}
+    \item \textbf{$T = V/c$:} requiere conocer el volumen de la bolsa en el estado.
+    \item \textbf{Dependiente del caudal:} intenta inferir el tiempo a partir de $c$, pero esto solo es válido si $V$ es conocido y fijo.
+    \item \textbf{Independiente del caudal:} define una distribución de tiempo sin depender de variables no observables.
+\end{enumerate}
+
+\paragraph{Decisión.}
+Se adopta la opción 3:
+\[
+T_{\mathrm{bolsa}} = \text{rand}\Bigl(\operatorname{hoursToSec}(4), \operatorname{hoursToSec}(6)\Bigr)
+\]
+
+El caudal solo determina si la infusión está activa; no se utiliza para estimar el tiempo de agotamiento.
+
+\paragraph{Calibración.}
+El intervalo se define a partir del modelo ideal $T = V/c$, suponiendo una bolsa estándar y los caudales del sistema ($50$ a $200\ \mathrm{ml/h}$). Esto da un rango aproximado entre $2.5$ y $10$ horas, con centro cercano a $5$ horas.
+
+Este cálculo solo se usa como referencia de escala. El modelo no conoce ni $V$ ni $c$ en tiempo de ejecución.
+
+\paragraph{Justificación.}
+\begin{enumerate}
+    \item El objetivo es generar eventos para pruebas del controlador, no reproducir el vaciado físico de la bolsa.
+    \item El caudal no es una variable suficiente para estimar el tiempo, ya que el resultado depende críticamente del volumen remanente, que no está en el estado.
+    \item Usar $c$ como predictor implica asumir que el volumen inicial es fijo y conocido, lo cual no ocurre en el sistema.
+\end{enumerate}
+
+\paragraph{Casos de uso.}
+\begin{enumerate}
+    \item \textbf{Bolsa recién colocada:} el tiempo depende de $V/c$, pero $V$ no está disponible en el modelo.
+    
+    \item \textbf{Bolsa parcialmente consumida:} el mismo caudal puede producir comportamientos incompatibles:
+    \begin{itemize}
+        \item con poco volumen restante, el evento ocurre rápido incluso con caudal bajo,
+        \item con volumen alto, puede tardar horas incluso con caudal alto.
+    \end{itemize}
+
+    \item \textbf{Cambios de caudal durante la infusión:} el sistema puede recibir órdenes sucesivas con distintos $c$, lo que haría que un modelo dependiente del caudal re-calcule implícitamente el tiempo varias veces, generando inconsistencias (un mismo estado podría producir distintos tiempos de agotamiento según el orden de las órdenes).
+\end{enumerate}
+
+Estos casos muestran que el caudal no determina de forma estable el tiempo del evento sin conocer el estado interno de la bolsa.
+
+\paragraph{Consecuencia.}
+Se prioriza un modelo independiente del caudal para evitar inferencias sobre variables no observadas. Si se requiere mayor fidelidad, se debe incorporar volumen y consumo acumulado en el estado.
+
+\paragraph{Casos de uso.}
+Se analizan situaciones concretas del sistema para evaluar la validez de una dependencia del caudal en el tiempo de agotamiento.
+
+\begin{enumerate}
+    \item \textbf{Orden con caudal alto al inicio de la infusión.}  
+    Se inicia una infusión a $200\ \mathrm{ml/h}$ con una bolsa prácticamente llena. En este caso el tiempo de agotamiento sería corto (orden de horas bajas). Sin embargo, el sistema no conoce el volumen inicial, por lo que este comportamiento no puede distinguirse de otros casos solo con el caudal.
+
+    \item \textbf{Cambio de caudal durante la misma bolsa.}  
+    Una infusión comienza a $100\ \mathrm{ml/h}$ y luego cambia a $50\ \mathrm{ml/h}$. El tiempo restante cambia completamente, pero el modelo solo recibe el nuevo caudal sin información del consumo previo. Un modelo dependiente de $c$ produciría reinicializaciones inconsistentes del tiempo de agotamiento.
+
+    \item \textbf{Caudal bajo con bolsa casi vacía.}  
+    Se configura un caudal de $50\ \mathrm{ml/h}$, pero la bolsa ya tiene muy poco volumen restante. El evento ocurre en poco tiempo, independientemente del caudal configurado. Esto rompe cualquier correlación directa entre $c$ y el tiempo.
+
+    \item \textbf{Reconfiguración sucesiva de órdenes médicas.}  
+    El sistema puede recibir múltiples órdenes con distintos caudales para la misma infusión activa. Si el tiempo de agotamiento dependiera de $c$, cada nueva orden implicaría recalcular el evento, generando desplazamientos artificiales del \textit{finBolsa}.
+
+    \item \textbf{Inicio tardío sobre bolsa ya parcialmente consumida.}  
+    Una nueva orden se emite cuando la bolsa ya está avanzada en su ciclo de consumo. El tiempo restante depende del volumen remanente, que no es conocido por el sistema. El caudal no permite inferir ese estado oculto.
+\end{enumerate}
+
+\end{document}
