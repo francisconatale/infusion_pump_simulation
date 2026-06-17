@@ -1,0 +1,82 @@
+\section{Generador Fin de Bolsa}
+
+Este componente modela la ocurrencia estocástica de eventos de fin de bolsa. Recibe pasivamente órdenes médicas que indican si existe infusión activa. Cuando se activa una infusión y el componente está ocioso, programa un evento de fin de bolsa. Órdenes posteriores de activación mantienen el evento programado sin reprogramar. Una orden de inactivación cancela cualquier evento pendiente.
+
+\subsection{Definición formal}
+
+\paragraph{Puertos y estructura del estado.}
+\begin{align*}
+X &= \{\text{activa}, \text{inactiva}\} \\[4pt]
+Y &= \{\mathit{finBolsa}\} \times \{0\} \\[4pt]
+S &= \{\text{inactivo}, \text{programado}\} \times (\mathbb{R}_0^+ \cup \{\infty\})
+\end{align*}
+
+La tupla de estado se formaliza como $s = (\mathit{fase}, \sigma)$, donde:
+\begin{itemize}
+    \item $\mathit{fase} \in \{\text{inactivo}, \text{programado}\}$: Indica si el componente se encuentra sin eventos pendientes o si posee un evento de fin de bolsa programado.
+    \item $\sigma \in \mathbb{R}_0^+ \cup \{\infty\}$: Tiempo remanente hasta la emisión del próximo evento de fin de bolsa.
+\end{itemize}
+
+\paragraph{Estado inicial.} Se modela considerando que inicialmente no existe ningún evento de fin de bolsa programado:
+\[
+s_0 = (\text{inactivo}, \infty)
+\]
+
+\paragraph{Funciones auxiliares.}
+Todos los tiempos del modelo se expresan en segundos. Para facilitar la definición de los intervalos temporales se emplea la siguiente función de conversión:
+\[
+\operatorname{hoursToSec}(h) = 3600h
+\]
+
+\paragraph{Transición externa ($\dext$).}
+Al recibir una orden médica, el componente verifica el estado de la infusión y su estado actual. Si la infusión está activa y el componente está inactivo, se programa un nuevo evento. Si la infusión sigue activa pero ya hay un evento programado, se mantiene el estado sin reprogramar. Si la infusión se detiene, el componente retorna al estado inactivo:
+\[
+\dext \bigl( (\mathit{fase}, \sigma), e, s_x \bigr) =
+\begin{cases}
+(\text{programado}, T_{\mathrm{bolsa}}) & \text{si } s_x = \text{activa} \text{ y } \mathit{fase} = \text{inactivo} \\[6pt]
+(\mathit{fase}, \sigma) & \text{si } s_x = \text{activa} \text{ y } \mathit{fase} = \text{programado} \\[6pt]
+(\text{inactivo}, \infty) & \text{si } s_x = \text{inactiva}
+\end{cases}
+\]
+
+La distribución temporal utilizada es fija:
+\[
+T_{\mathrm{bolsa}}
+=
+\text{rand}
+\Bigl(
+\operatorname{hoursToSec}(4),
+\operatorname{hoursToSec}(6)
+\Bigr)
+\]
+
+\paragraph{Origen de la estimación.}
+El intervalo elegido para $T_{\mathrm{bolsa}}$ se construye a partir de una referencia de orden de magnitud basada en un modelo físico simplificado.
+
+Se asume una bolsa estándar de volumen $V = 500\ \mathrm{ml}$ y se consideran caudales representativos del sistema $c \in \{50, 100, 150, 200\}\ \mathrm{ml/h}$. A partir de la relación $T = V/c$, se obtienen tiempos característicos de 10, 5, 3.3 y 2.5 horas. Estos valores no se interpretan como una distribución estadística del sistema real, sino como un conjunto discreto de escenarios posibles que permiten acotar el comportamiento temporal esperado.
+
+El intervalo $[4,6]$ horas se define como una región de diseño que representa un comportamiento intermedio entre los escenarios extremos del conjunto, asegurando cobertura de casos representativos sin incluir valores atípicos que no aportan valor a la validación del controlador.
+
+\paragraph{Aclaración.}
+El intervalo de $T_{\mathrm{bolsa}}$ constituye un parámetro de generación de eventos dentro del sistema de simulación y no una estimación directa del tiempo físico de vaciado.
+
+\paragraph{Transición interna ($\dint$).}
+Cuando el temporizador se agota ($\sigma = 0$), se considera ocurrido el evento de fin de bolsa. El componente emite la notificación correspondiente y retorna a su estado inactivo:
+\[
+\dint(\mathit{fase}, \sigma) = (\text{inactivo}, \infty)
+\]
+
+\paragraph{Función de salida ($\lambda$).}
+Emite una notificación de fin de bolsa a través de su puerto de salida:
+\[
+\lambda(\mathit{fase}, \sigma) =
+\begin{cases}
+(\mathit{finBolsa}, 0) & \text{si } \mathit{fase} = \text{programado} \\[4pt]
+\varnothing & \text{en otro caso}
+\end{cases}
+\]
+
+\paragraph{Avance temporal ($\ta$).}
+\[
+\ta(\mathit{fase}, \sigma) = \sigma
+\]

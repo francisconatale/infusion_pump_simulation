@@ -1,0 +1,81 @@
+\section{Generador de órdenes médicas}
+
+El generador produce órdenes médicas periódicas cuyo caudal e intervalo
+de tiempo se muestrean de las distribuciones definidas en el documento
+de modelado estadístico, parametrizadas por el grado de criticidad $k$.
+El parámetro $k$ es una constante del modelo que representa el grado
+de criticidad asignado al paciente y no varía durante la simulación.
+
+\subsection{Definición formal}
+
+Sea $k_0 \in [0,1]$ el grado de criticidad del paciente, fijado como
+parámetro del modelo.
+
+\[
+  M_{\mathrm{gen}} = \langle X,\; Y,\; S,\; \ta,\; \dint,\; \dext,\; \lambda \rangle
+\]
+
+\begin{align*}
+  X &= \varnothing \\[4pt]
+  Y &= \bigl\{\,(c,\,t,\;0)\;\big|\;
+        c\in\{0,50,100,150,200\},\;
+        t\in\{2,4,6,8,12\}\bigr\} \\[4pt]
+  S &= \bigl\{\,(c,\,t)\;\big|\;
+        c\in\{0,50,100,150,200\},\;
+        t\in\{2,4,6,8,12\}\bigr\}
+\end{align*}
+
+El parámetro $k_0$ no forma parte del estado sino que es una constante
+del modelo que parametriza las funciones $\mathrm{Caudal}$ y $\mathrm{Tiempo}$.
+
+\paragraph{Transición interna.}
+Genera una nueva orden a partir del grado de criticidad del paciente:
+\[
+  \dint(c,\,t)
+  \;=\;
+  \bigl(\,\mathrm{Caudal}(k_0),\;\mathrm{Tiempo}(k_0)\,\bigr).
+\]
+
+\paragraph{Transición externa.}
+El modelo no recibe eventos externos:
+\[
+  \dext = \varnothing.
+\]
+
+\paragraph{Función de salida.}
+Emite el caudal y el tiempo de la orden vigente:
+\[
+  \lambda(c,\,t) \;=\; (c,\,t,\;0).
+\]
+
+\paragraph{Avance temporal.}
+\[
+  \ta(c,\,t) \;=\; t.
+\]
+
+\paragraph{Estado inicial.}
+\[
+  s_0 \;=\; \bigl(\,\mathrm{Caudal}(k_0),\;\mathrm{Tiempo}(k_0)\,\bigr),
+\]
+donde $k_0$ es el grado de criticidad del paciente, fijado como parámetro
+al instanciar el modelo.
+
+\subsection{Diagrama de estados}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\node[draw,circle] (gen) {$\left(c,t\right)$};
+\node[draw,rectangle] (ctrl) at (5,0) {Controlador};
+
+\draw[-{Stealth}] (gen) -- (ctrl)
+node[midway,above] {$\lambda=(c,t,0)$};
+
+\draw[-{Stealth}]
+(gen) edge[loop left]
+node {$\dint(c,t) = (\mathrm{Caudal}(k_0),\mathrm{Tiempo}(k_0))$}
+(gen);
+\end{tikzpicture}
+\caption{Diagrama de estados del Generador de Órdenes Médicas.}
+\label{fig:diag_generador_med}
+\end{figure}

@@ -1,0 +1,120 @@
+\section{Bomba de infusión}
+
+La bomba modifica el caudal real en respuesta a comandos del controlador. El actuador físico presenta una inercia modelada mediante un factor aleatorio que atenúa la magnitud del ajuste solicitado, junto con una saturación estricta que garantiza que el caudal real permanezca siempre dentro del rango operativo $[0, 200]$.
+
+\subsection{Definición formal}
+
+\begin{align*}
+  X &= \{\mathrm{ajustarBomba},\;\mathrm{detenerBomba}\}\times\{1\} \\[4pt]
+  Y &= \{\,(c,\;0)\;\mid\;c\in[0,200]\,\} \\[4pt]
+  S &= \underbrace{[0,200]}_{\mathit{cR}}
+     \times \underbrace{\{\mathrm{detenida},\,\mathrm{corriendo}\}}_{\mathit{est}}
+     \times \underbrace{\mathbb{R}_0^+}_{\mu}
+\end{align*}
+
+\paragraph{Función de saturación.}
+\[
+  \mathrm{sat}_{[0,200]}(x) = \max(0,\, \min(200,\, x))
+\]
+
+\paragraph{Transición externa.}
+\begin{align*}
+\dext&\bigl((cR,\,est,\,\mu),\;e,\;(\mathrm{detenerBomba},\,1)\bigr)
+  \;=\; (0,\;\mathrm{detenida},\;0)
+\\[6pt]
+\dext&\bigl((cR,\,est,\,\mu),\;e,\;((\mathrm{ajustarBomba},\,\Delta),\,-1)\bigr)
+  \;=\; \Bigl(\mathrm{sat}_{[0,200]}\bigl(cR + \Delta\bigr),\;
+              \mathrm{corriendo},\;
+              \mathrm{random\_truncado}(0.5)\Bigr)
+\end{align*}
+
+\paragraph{Transición interna.}
+Una vez transcurrido el retardo $\mu$, la bomba publica su caudal real y queda pasiva:
+\[
+  \dint(cR,\,est,\,\mu) \;=\; (cR,\;est,\;\infty).
+\]
+
+\paragraph{Función de salida.}
+\[
+  \lambda(cR,\,est,\,\mu) \;=\; (cR,\;0).
+\]
+
+\paragraph{Avance temporal.}
+\[
+  \ta(cR,\,est,\,\mu) \;=\; \mu.
+\]
+
+\paragraph{Estado inicial.}
+\[
+  s_0 \;=\; (0,\;\mathrm{detenida},\;\infty).
+\]
+
+\subsection{Diagramas de estados}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+  \node[draw, rectangle] (ctrl)   at (-4,0) {Controlador};
+  \node[draw, circle, minimum size=2cm, align=center] (bomba) at (0,0) {corriendo\\(cR)};
+  \node[draw, rectangle] (sensor) at (4,0)  {Sensor};
+
+  \draw[-{Stealth}] (ctrl) -- (bomba)
+    node[above=3pt, pos=0.3, font=\scriptsize] {$\dext$: detenerBomba};
+  \draw[-{Stealth}] (bomba) -- (sensor)
+    node[above=3pt, pos=0.5, font=\scriptsize] {$\lambda = (cR,\,0)$};
+  \draw[-{Stealth}] (bomba) edge[loop above]
+    node[above=2pt, font=\scriptsize] {$\dint(cR,\,est,\,\mu) = (cR,\,est,\,\infty)$} (bomba);
+\end{tikzpicture}
+\caption{Caso 1: Detener estando corriendo.}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+  \node[draw, rectangle] (ctrl)   at (-4,0) {Controlador};
+  \node[draw, circle, minimum size=2cm, align=center] (bomba) at (0,0) {corriendo\\(cR)};
+  \node[draw, rectangle] (sensor) at (4,0)  {Sensor};
+
+  \draw[-{Stealth}] (ctrl) -- (bomba)
+    node[above=3pt, pos=0.25, font=\scriptsize] {$\dext$: (ajustarBomba, $\Delta$)};
+  \draw[-{Stealth}] (bomba) -- (sensor)
+    node[above=3pt, pos=0.5, font=\scriptsize] {$\lambda = (cR',\,0)$};
+  \draw[-{Stealth}] (bomba) edge[loop above]
+    node[above=2pt, font=\scriptsize] {$\dint(cR',\,est,\,\mu) = (cR',\,est,\,\infty)$} (bomba);
+\end{tikzpicture}
+\caption{Caso 2: Ajustar estando corriendo.}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+  \node[draw, rectangle] (ctrl)   at (-4,0) {Controlador};
+  \node[draw, circle, minimum size=2cm, align=center] (bomba) at (0,0) {detenida\\(cR=0)};
+  \node[draw, rectangle] (sensor) at (4,0)  {Sensor};
+
+  \draw[-{Stealth}] (ctrl) -- (bomba)
+    node[above=3pt, pos=0.3, font=\scriptsize] {$\dext$: detenerBomba};
+  \draw[-{Stealth}] (bomba) -- (sensor)
+    node[above=3pt, pos=0.5, font=\scriptsize] {$\lambda = (0,\,0)$};
+  \draw[-{Stealth}] (bomba) edge[loop above]
+    node[above=2pt, font=\scriptsize] {$\dint(0,\,\mathrm{detenida},\,\mu) = (0,\,\mathrm{detenida},\,\infty)$} (bomba);
+\end{tikzpicture}
+\caption{Caso 3: Detener estando detenida.}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+  \node[draw, rectangle] (ctrl)   at (-4,0) {Controlador};
+  \node[draw, circle, minimum size=2cm, align=center] (bomba) at (0,0) {detenida\\(cR=0)};
+  \node[draw, rectangle] (sensor) at (4,0)  {Sensor};
+
+  \draw[-{Stealth}] (ctrl) -- (bomba)
+    node[above=3pt, pos=0.25, font=\scriptsize] {$\dext$: (ajustarBomba, $\Delta$)};
+  \draw[-{Stealth}] (bomba) -- (sensor)
+    node[above=3pt, pos=0.5, font=\scriptsize] {$\lambda = (cR',\,0)$};
+  \draw[-{Stealth}] (bomba) edge[loop above]
+    node[above=2pt, font=\scriptsize] {$\dint(cR',\,\mathrm{corriendo},\,\mu) = (cR',\,\mathrm{corriendo},\,\infty)$} (bomba);
+\end{tikzpicture}
+\caption{Caso 4: Ajustar estando detenida.}
+\end{figure}

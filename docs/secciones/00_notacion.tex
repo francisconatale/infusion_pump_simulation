@@ -1,0 +1,19 @@
+\section{Notación común}
+
+Cada modelo atómico DEVS se especifica mediante la tupla
+\[
+  M = \langle X,\; Y,\; S,\; \ta,\; \dint,\; \dext,\; \lambda \rangle.
+\]
+Se adoptan las siguientes convenciones a lo largo del documento:
+
+\begin{itemize}
+  \item Los puertos de entrada y salida se distinguen con un índice entero
+        no negativo: $(v, p)$ donde $v$ es el valor y $p \in \mathbb{N}_0$
+        es el número de puerto.
+  \item En las transiciones externas, $e$ denota el tiempo transcurrido desde
+        la última transición.
+  \item $\mathbb{R}_0^+$ denota los reales no negativos incluyendo $\infty$.
+  \item Los estados pasivos utilizan $\sigma = \infty$ como avance temporal.
+  \item Las operaciones sobre el caudal real se saturan al rango $[0, 200]$
+        mediante la función $\mathrm{sat}_{[0,200]}(x) = \max(0, \min(200, x))$.
+\end{itemize}

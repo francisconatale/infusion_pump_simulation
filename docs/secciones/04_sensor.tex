@@ -1,0 +1,71 @@
+\section{Sensor de flujo}
+
+El sensor mide el caudal real administrado por la bomba y emite una lectura cada segundo.
+
+\subsection{Definición formal}
+
+\begin{align*}
+  X &= \{\,(c,\;0)\;\mid\; c\in[0,200]\,\} \\[4pt]
+  Y &= \{\,(c,\;0)\;\mid\; c\in[0,200]\,\} \\[4pt]
+  S &= \{\,(c,\;\sigma)\;\mid\; c\in[0,200],\;\sigma\in\mathbb{R}_0^{+}\,\}
+\end{align*}
+
+El estado $s = (c,\,\sigma)$ contiene el último caudal recibido del actuador y el tiempo restante $\sigma$ hasta la próxima medición.
+
+\paragraph{Transición externa.}
+Actualiza el caudal medido sin modificar el tiempo restante:
+\[
+  \dext\bigl((c,\,\sigma),\;e,\;(x,0)\bigr)
+  \;=\; (x,\;\sigma - e).
+\]
+
+\paragraph{Transición interna.}
+Emite la medición y programa la siguiente un segundo después:
+\[
+  \dint(c,\,\sigma) \;=\; (c,\;1).
+\]
+
+\paragraph{Función de salida.}
+\[
+  \lambda(c,\,\sigma) \;=\; (c,\;0).
+\]
+
+\paragraph{Avance temporal.}
+\[
+  \ta(c,\,\sigma) \;=\; \sigma.
+\]
+
+\paragraph{Estado inicial.}
+\[
+  s_0 \;=\; (0,\;\infty).
+\]
+El sensor permanece pasivo hasta recibir la primera lectura del actuador.
+
+\subsection{Diagrama de estados}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+  \node[draw, rectangle] (act) at (-5,0) {Actuador de la bomba};
+  \node[draw, circle]    (sensor) at (0,0) {$(c,\,\sigma)$};
+  \node[draw, rectangle] (ctrl)   at (5,0) {Controlador};
+
+  \draw[-{Stealth}] (act) -- (sensor)
+    node[midway, above] {$\lambda=(x,0)$};
+
+  \draw[-{Stealth}] (sensor) -- (ctrl)
+    node[midway, above] {$\lambda = (c,\,0)$};
+
+  \draw[-{Stealth}]
+    (sensor) edge[loop above]
+    node {$\delta_{\text{int}}(c,\,\sigma) = (c,\,1)$}
+    (sensor);
+
+  \draw[-{Stealth}]
+    (sensor) edge[loop below]
+    node {$\delta_{\text{ext}}\bigl((c,\,\sigma),\,e,\,(x,0)\bigr) = (x,\,\sigma-e)$}
+    (sensor);
+\end{tikzpicture}
+\caption{Diagrama de estados del Sensor de Flujo.}
+\label{fig:diag_sensor}
+\end{figure}

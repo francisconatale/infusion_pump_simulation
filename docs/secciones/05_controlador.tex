@@ -1,0 +1,237 @@
+\section{Controlador}
+
+El controlador es un modelo atómico DEVS cuyas variables de estado han sido divididas para gestionar de forma independiente el monitoreo del flujo y el ciclo de vida de la bolsa de infusión. Recibe órdenes médicas, lecturas del sensor, señales de fin de bolsa y confirmaciones del enfermero; emite ajustes a la bomba, registra eventos y dispara alarmas sin que una condición crítica bloquee a la otra.
+
+El mecanismo de salida se basa en una \textbf{cola de acciones pendientes} $\mathit{acciones} \in (A^* \times \mathbb{R}_{\ge 0})^*$.
+
+\subsection{Definición formal}
+
+\paragraph{Puertos.}
+\begin{align*}
+  X &= \{\mathrm{ordenMedica}\}\!\times\!\{0\}
+        \;\cup\; \{\mathrm{sensorFlujo}\}\!\times\!\{1\}
+        \;\cup\; \{\mathrm{finBolsa}\}\!\times\!\{2\}
+        \;\cup\; \{\mathrm{confirmacionEnfermero}\}\!\times\!\{3\}
+  \\[4pt]
+  Y &= \{\mathrm{alarmaBaja},\mathrm{alarmaMedia},\mathrm{alarmaCritica}\}
+            \!\times\!\{0\}
+        \;\cup\;
+        \{\mathrm{ajustarCaudal},\mathrm{detenerBomba},\mathrm{registrarEvento}\}
+            \!\times\!\{1\}
+        \;\cup\;
+        \{\mathrm{registrarEvento}\}\!\times\!\{9\}
+\end{align*}
+
+\paragraph{Espacio de estados.}
+\begin{align*}
+  S &= \underbrace{\mathbb{R}_{\ge 0}}_{\mathit{uCM}}
+     \times
+     \underbrace{\mathbb{R}_{\ge 0}}_{\mathit{cO}}
+     \times
+     \underbrace{\mathbb{N}_0}_{\mathit{tol}}
+     \times
+     \underbrace{E_{\mathrm{flujo}}}_{\mathit{est}_{\mathrm{flujo}}}
+     \times
+     \underbrace{E_{\mathrm{bolsa}}}_{\mathit{est}_{\mathrm{bolsa}}}
+     \times
+     \underbrace{\bigl(\mathbb{R}_0^+ \cup \{\infty\}\bigr)}_{\tau_{\mathrm{bolsa}}}
+     \times
+     \underbrace{(A^* \times \mathbb{R}_{\ge 0})^*}_{\mathit{acciones}}
+\end{align*}
+
+donde los dominios discretos se definen como:
+\begin{align*}
+  E_{\mathrm{flujo}} &= \{\mathrm{normal},\,\mathrm{estadoMedio},\,\mathrm{estadoCritico}\} \\
+  E_{\mathrm{bolsa}} &= \{\mathrm{llena},\,\mathrm{bolsaBaja},\,\mathrm{esperandoDetencion},\,\mathrm{vacia}\}
+\end{align*}
+
+y el conjunto de acciones etiquetadas posibles es:
+\[
+  A^* = \{\mathrm{alarmaBaja},\,\mathrm{alarmaMedia},\,\mathrm{alarmaCritica},\,
+        \mathrm{detenerBomba},\,\mathrm{registrarEvento}\}
+        \;\cup\;
+        \{(\mathrm{ajustarCaudal},\, \Delta) \mid \Delta \in \mathbb{R}\}
+        \;\cup\;
+        \{(\mathrm{registrarEvento},\, s) \mid s \in S\}
+\]
+
+\paragraph{Roles funcionales de cada variable.}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lll}
+\toprule
+Variable & Tipo & Rol \\
+\midrule
+$uCM$                   & $\mathbb{R}_{\ge 0}$               & Monitoreo de flujo \\
+$cO$                    & $\mathbb{R}_{\ge 0}$               & Gestión de órdenes \\
+$tol$                   & $\mathbb{N}_0$                     & Monitoreo de flujo \\
+$est_{\mathrm{flujo}}$  & $E_{\mathrm{flujo}}$               & Control de anomalías de caudal \\
+$est_{\mathrm{bolsa}}$  & $E_{\mathrm{bolsa}}$               & Ciclo de vida de la medicación \\
+$\tau_{\mathrm{bolsa}}$ & $\mathbb{R}_0^+\cup\{\infty\}$     & Temporizador exclusivo de la bolsa \\
+$\mathit{acciones}$     & $(A^* \times \mathbb{R}_{\ge 0})^*$ & Cola de salidas pendientes con demora \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Estado inicial.}
+\[
+  s_0 = (0,\;0,\;0,\;\mathrm{normal},\;\mathrm{llena},\;\infty,\;[])
+\]
+
+\paragraph{Función auxiliar \texttt{no\_tolerable}.}
+\[
+  \mathrm{no\_tolerable}(cO,uCM)
+  \;=\;
+  \frac{|cO-uCM|}{cO} > 0{,}10
+\]
+
+\paragraph{Función auxiliar \texttt{conLog}.}
+\begin{align*}
+  \mathrm{conLog}(s,\, []) &= [] \\[4pt]
+  \mathrm{conLog}(s,\, [(a_1, d_1),\, \ldots]) &=
+    [(a_1,\, d_1),\, ((\mathrm{registrarEvento},\, s),\, 0)]
+    \;\mathbin{+\!\!+}\;
+    \mathrm{conLog}(s,\, [(a_2, d_2), \ldots])
+\end{align*}
+
+\paragraph{Avance temporal.}
+\[
+  \ta(s) =
+  \begin{cases}
+    d_1
+      & \text{si } \mathit{acciones} = [(a_1,d_1),\ldots] \\[4pt]
+    \tau_{\mathrm{bolsa}}
+      & \text{si } \mathit{acciones} = []
+        \;\land\; est_{\mathrm{bolsa}} = \mathrm{esperandoDetencion} \\[4pt]
+    \infty
+      & \text{si } \mathit{acciones} = []
+        \;\land\; est_{\mathrm{bolsa}} \neq \mathrm{esperandoDetencion}
+  \end{cases}
+\]
+
+\paragraph{Caso de absorción global.}
+\[
+  \delta_{\mathrm{ext}}(s,\,e,\,(\cdot,\,\cdot))
+  = s
+  \qquad \text{si } est_{\mathrm{bolsa}} = \mathrm{vacia}
+\]
+
+\paragraph{Rol 1 – Gestión de órdenes.}
+Transición externa — orden médica con $c > 0$:
+\begin{align*}
+  \delta_{\mathrm{ext}}(s,\,e,\,((c,t),0))
+  = \bigl(&uCM,\;c,\;tol,\;est_{\mathrm{flujo}},\;est_{\mathrm{bolsa}},\;
+           \tau_{\mathrm{bolsa}}-e, \\
+          &\mathrm{conLog}(s,\,[((\mathrm{ajustarCaudal},\, c - uCM),\;
+             \mathrm{random\_truncado}(0.3) \times 10)])\bigr)
+\end{align*}
+
+Transición externa — orden médica con $c = 0$:
+\begin{align*}
+  \delta_{\mathrm{ext}}(s,\,e,\,((0,t),0))
+  = \bigl(&uCM,\;0,\;tol,\;est_{\mathrm{flujo}},\;est_{\mathrm{bolsa}},\;
+           \tau_{\mathrm{bolsa}}-e,\;
+           \mathrm{conLog}(s,\,[(\mathrm{detenerBomba},\;0)])\bigr)
+\end{align*}
+
+\paragraph{Rol 2 – Monitoreo de flujo.}
+Sea $\tau' = \tau_{\mathrm{bolsa}} - e$:
+\[
+  \delta_{\mathrm{ext}}(s,\,e,\,(x,1)) =
+  \begin{cases}
+    \bigl(x,\,cO,\,0,\,\mathrm{estadoCritico},\,est_{\mathrm{bolsa}},\,\tau',\,
+      \mathrm{conLog}(s,\,[(\mathrm{alarmaCritica},0),\,(\mathrm{detenerBomba},0)])\bigr)
+    \\ \quad \text{si } tol \ge 5 \land est_{\mathrm{flujo}} = \mathrm{estadoMedio}
+    \\[2ex]
+    \bigl(x,\,cO,\,0,\,\mathrm{estadoMedio},\,est_{\mathrm{bolsa}},\,\tau',\,
+      \mathrm{conLog}(s,\,[(\mathrm{alarmaMedia},0)])\bigr)
+    \\ \quad \text{si } tol \ge 5 \land est_{\mathrm{flujo}} = \mathrm{normal}
+    \\[2ex]
+    \bigl(x,\,cO,\,tol+1,\,est_{\mathrm{flujo}},\,est_{\mathrm{bolsa}},\,\tau',\,
+      []\bigr)
+    \\ \quad \text{si } \mathrm{no\_tolerable}(cO,\,x) \land tol < 5
+    \\[2ex]
+    \bigl(x,\,cO,\,0,\,est_{\mathrm{flujo}},\,est_{\mathrm{bolsa}},\,\tau',\,
+      []\bigr)
+    \\ \quad \text{en otro caso}
+  \end{cases}
+\]
+
+Transición externa — confirmación del enfermero:
+\begin{align*}
+  \delta_{\mathrm{ext}}(s,\,e,\,(\mathrm{confirmacionEnfermero},3))
+  = \bigl(&uCM,\;cO,\;0,\;\mathrm{normal},\;est_{\mathrm{bolsa}},\;
+           \tau_{\mathrm{bolsa}}-e, \\
+          &\mathrm{conLog}(s,\,[((\mathrm{ajustarCaudal},\,cO-uCM),\;0)])\bigr)
+\end{align*}
+
+\paragraph{Rol 3 – Ciclo de bolsa.}
+Transición externa — señal de fin de bolsa:
+\[
+  \delta_{\mathrm{ext}}(s,\,e,\,(\mathrm{finBolsa},2)) =
+  \begin{cases}
+    \bigl(uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,\mathrm{bolsaBaja},\,
+      \tau_{\mathrm{bolsa}}-e,\,
+      \mathrm{conLog}(s,\,[(\mathrm{alarmaBaja},\;0)])\bigr)
+    \\ \quad \text{si } est_{\mathrm{bolsa}} = \mathrm{llena}
+    \\[2ex]
+    s
+    \\ \quad \text{si } est_{\mathrm{bolsa}} \in
+      \{\mathrm{bolsaBaja},\,\mathrm{esperandoDetencion},\,\mathrm{vacia}\}
+  \end{cases}
+\]
+
+Transiciones internas — ciclo de vida de la bolsa:
+\begin{align*}
+  \delta_{\mathrm{int}}&(uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,
+    \mathrm{bolsaBaja},\,\tau_{\mathrm{bolsa}},\,[(\mathrm{alarmaBaja},0)]) \\
+  &= (uCM,\;cO,\;tol,\;est_{\mathrm{flujo}},\;
+      \mathrm{esperandoDetencion},\;60,\;[])
+\end{align*}
+
+\begin{align*}
+  \delta_{\mathrm{int}}&(uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,
+    \mathrm{esperandoDetencion},\,0,\,[]) \\
+  &= (uCM,\;cO,\;tol,\;est_{\mathrm{flujo}},\;
+      \mathrm{vacia},\;0,\;\mathrm{conLog}(s,\,[(\mathrm{detenerBomba},\;0)]))
+\end{align*}
+
+\begin{align*}
+  \delta_{\mathrm{int}}&(uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,
+    \mathrm{vacia},\,0,\,[(\mathrm{detenerBomba},0)]) \\
+  &= (uCM,\;cO,\;tol,\;est_{\mathrm{flujo}},\;
+      \mathrm{vacia},\;\infty,\;[])
+\end{align*}
+
+\paragraph{Función de salida y transición interna general.}
+\[
+  \lambda(\ldots,\,[(a_1,d_1),(a_2,d_2),\ldots],\,\ldots) \;=\;
+  \begin{cases}
+    (a_1,\, 1) & \text{si } a_1 \in \{\mathrm{detenerBomba}\} \cup \{(\mathrm{ajustarCaudal},\,\Delta)\} \\
+    (a_1,\, 0) & \text{si } a_1 \in \{\mathrm{alarmaBaja},\,\mathrm{alarmaMedia},\,\mathrm{alarmaCritica}\} \\
+    (a_1,\, 9) & \text{si } a_1 = (\mathrm{registrarEvento},\, \cdot)
+  \end{cases}
+\]
+
+\[
+  \delta_{\mathrm{int}}(\ldots,\,[(a_1,d_1),(a_2,d_2),\ldots],\,\ldots)
+  \;=\; (\ldots,\,[(a_2,d_2),\ldots],\,\ldots)
+\]
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lll}
+\toprule
+Origen & Cola encolada & Demora \\
+\midrule
+Orden médica $c > 0$   & $[((\mathrm{ajustarCaudal},\,\Delta),\, \mathit{rand}_{0.3}\times 10)]$ & hasta 3\,s \\
+Orden médica $c = 0$   & $[(\mathrm{detenerBomba},\,0)]$                                      & inmediata \\
+Sensor $\to$ crítico   & $[(\mathrm{alarmaCritica},0),\,(\mathrm{detenerBomba},0)]$            & inmediata \\
+Sensor $\to$ medio     & $[(\mathrm{alarmaMedia},0)]$                                         & inmediata \\
+Fin de bolsa           & $[(\mathrm{alarmaBaja},0)]$                                          & inmediata \\
+Bolsa vacía (interna)  & $[(\mathrm{detenerBomba},0)]$                                        & inmediata \\
+Confirmación enfermero & $[((\mathrm{ajustarCaudal},\,\Delta),0)]$                             & inmediata \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -1,0 +1,64 @@
+\section{Generador de Confirmación de Enfermero}
+
+Este componente modela la intervención reactiva y estocástica del personal de enfermería ante las alertas del sistema. Se adopta un diseño estrictamente \textbf{reactivo-estocástico}. El componente permanece ocioso en un estado pasivo hasta la recepción de un estímulo del sistema clínico. Ante la ocurrencia de una alarma, el modelo transiciona a una fase activa donde programa internamente un evento de confirmación médica retrasado por una latencia aleatoria uniforme.
+
+\subsection{Definición formal}
+
+\paragraph{Puertos y estructura del estado.}
+\begin{align*}
+X &= \{\text{alarma}\} \times \{0\} \\[4pt]
+Y &= \{\mathit{confirmacionEnfermero}\} \times \{0\} \\[4pt]
+S &= \{\text{idle}, \text{esperandoConfirmacion}\} \times (\mathbb{R}_0^+ \cup \{\infty\})
+\end{align*}
+
+La tupla de estado se formaliza como $s = (\mathit{fase}, \sigma)$, donde:
+\begin{itemize}
+    \item $\mathit{fase} \in \{\text{idle}, \text{esperandoConfirmacion}\}$: Indica si el componente se encuentra en reposo pasivo o si posee una acción de confirmación.
+    \item $\sigma \in \mathbb{R}_0^+ \cup \{\infty\}$: Tiempo remanente hasta la emisión física del evento de confirmación.
+\end{itemize}
+
+\paragraph{Estado inicial.} 
+\[
+s_0 = (\text{idle}, \infty)
+\]
+
+\paragraph{Transición externa ($\dext$).}
+\[
+\dext \bigl( (\mathit{fase}, \sigma), e, s_x \bigr) =
+\begin{cases}
+(\text{esperandoConfirmacion}, T_{\mathrm{resp}}) & \text{si } s_x = (\text{alarma}, 0) \text{ y } \mathit{fase} = \text{idle} \\[6pt]
+(\mathit{fase}, \sigma - e) & \text{si } s_x = (\text{alarma}, 0) \text{ y } \mathit{fase} = \text{esperandoConfirmacion}
+\end{cases}
+\]
+
+La distribución temporal utilizada es estocástica dentro de un intervalo uniforme continuo:
+\[
+T_{\mathrm{resp}} \sim U(t_{\mathrm{min}}, t_{\mathrm{max}}) = \text{rand}(5, 75)
+\]
+
+\paragraph{Origen de la estimación.}
+La selección de la ventana operativa $[5, 75]$ segundos segmenta la simulación en tres zonas de comportamiento dinámico:
+\begin{itemize}
+    \item \textbf{Zona de Respuesta Oportuna ($5 \le T_{\mathrm{resp}} \le 30\ \mathrm{s}$):} Evalúa el régimen operativo normal donde el factor humano reacciona con eficiencia.
+    \item \textbf{Zona de Reincidencia de Alarmas ($30 < T_{\mathrm{resp}} \le 60\ \mathrm{s}$):} Modela retrasos moderados por parte del personal médico. 
+    \item \textbf{Zona de Mitigación Autónoma ($60 < T_{\mathrm{resp}} \le 75\ \mathrm{s}$):} Supera intencionalmente el umbral de seguridad de 60 segundos. 
+\end{itemize}
+
+\paragraph{Transición interna ($\dint$).}
+\[
+\dint(\mathit{fase}, \sigma) = (\text{idle}, \infty)
+\]
+
+\paragraph{Función de salida ($\lambda$).}
+\[
+\lambda(\mathit{fase}, \sigma) =
+\begin{cases}
+(\mathit{confirmacionEnfermero}, 0) & \text{si } \mathit{fase} = \text{esperandoConfirmacion} \\[4pt]
+\varnothing & \text{en otro caso}
+\end{cases}
+\]
+
+\paragraph{Avance temporal ($\ta$).}
+\[
+\ta(\mathit{fase}, \sigma) = \sigma
+\]

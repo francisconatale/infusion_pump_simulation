@@ -1,0 +1,54 @@
+\section{Módulo de Registro con Historial Acumulativo}
+
+Este componente almacena cronológicamente snapshots del estado completo del controlador.
+
+\subsection{Definición formal}
+
+\paragraph{Puertos y estructura del estado.}
+\[
+  S_{\mathrm{ctrl}} = \mathbb{R}_{\ge 0} \times \dots \times (A^* \times \mathbb{R}_{\ge 0})^*
+\]
+
+\begin{align*}
+  X &= ((\mathrm{registrarEvento},\, S_{\mathrm{ctrl}}),\, 9) \\[4pt]
+  Y &= \varnothing \\[4pt]
+  S &= \mathcal{L}(S_{\mathrm{ctrl}} \times \mathbb{R}_{\ge 0})
+       \times \mathbb{R}_{\ge 0}
+       \times \{\infty\}
+\end{align*}
+
+La tupla de estado $s \in S$ se define como $s = (\mathit{lista},\; t_{\mathrm{acum}},\; \mu)$.
+
+\paragraph{Estado inicial.}
+\[
+  s_0 = ([\;],\; 0,\; \infty)
+\]
+
+\paragraph{Transición externa ($\dext$).}
+Sea $\mathit{lista} \mathbin{\Vert} (s_{\mathrm{ctrl}},\, t)$ la operación de anexar un elemento al final de la secuencia:
+\[
+  \dext\bigl((\mathit{lista},\; t_{\mathrm{acum}},\; \infty),\;
+             e,\;
+             ((\mathrm{registrarEvento},\, s_{\mathrm{ctrl}}),\; 9)\bigr)
+  \;=\;
+  \bigl(\,
+    \mathit{lista} \mathbin{\Vert} (s_{\mathrm{ctrl}},\; t_{\mathrm{acum}} + e),\;
+    t_{\mathrm{acum}} + e,\;
+    \infty
+  \bigr)
+\]
+
+\paragraph{Transición interna ($\dint$).}
+\[
+  \dint(s) = s
+\]
+
+\paragraph{Función de salida ($\lambda$).}
+\[
+  \lambda(s) = \varnothing
+\]
+
+\paragraph{Avance temporal ($\ta$).}
+\[
+  \ta(s) = \infty
+\]

@@ -1,0 +1,37 @@
+% estructura/preambulo.tex
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{geometry}
+\usepackage{tikz}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{microtype} 
+\usepackage{graphicx} 
+\usepackage{float}
+
+\geometry{margin=2.5cm}
+
+\usetikzlibrary{automata, positioning, arrows.meta, fit, backgrounds}
+
+% Configuración estética minimalista y técnica para los diagramas de estados
+\tikzset{
+  every state/.style={
+    draw, rounded corners=6pt,
+    minimum width=2.2cm, minimum height=0.75cm,
+    font=\small, align=center,
+    fill=gray!8
+  },
+  initial text={},
+  every edge/.style={draw, -{Stealth[length=5pt]}, font=\scriptsize},
+  loop above/.append style={looseness=5},
+  loop below/.append style={looseness=5},
+}
+
+% Macros globales del formalismo DEVS
+\newcommand{\dint}{\delta_{\mathrm{int}}}
+\newcommand{\dext}{\delta_{\mathrm{ext}}}
+\newcommand{\ta}{\mathit{ta}}

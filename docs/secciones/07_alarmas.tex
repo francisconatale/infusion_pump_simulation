@@ -1,0 +1,120 @@
+\section{Módulo de alarmas}
+
+El módulo recibe señales de alarma del controlador, las emite hacia el entorno y gestiona el ciclo de espera de confirmación para las alarmas críticas.
+
+\subsection{Definición formal}
+
+\begin{align*}
+  X &= \{\mathrm{alarmaBaja},\,\mathrm{alarmaMedia},\,\mathrm{alarmaCritica}\}
+       \!\times\!\{0\}
+     \;\cup\; \{\mathrm{confirmacionEnfermero}\}\!\times\!\{1\} \\[4pt]
+  Y &= \{\mathrm{alarmaBaja},\,\mathrm{alarmaMedia},\,\mathrm{alarmaCritica}\}
+       \!\times\!\{0\} \\[4pt]
+  S &= E_{\mathrm{alarmas}} \times \mathbb{R}_0^+
+\end{align*}
+
+El conjunto de estados discretos es:
+\[
+  E_{\mathrm{alarmas}} = \{
+    \mathrm{noAlarma},\;
+    \mathrm{alarmaBaja},\;
+    \mathrm{alarmaMedia},\;
+    \mathrm{alarmaCritica},\;
+    \mathrm{espLargo},\;
+    \mathrm{espCorto},\;
+    \mathrm{repetirCritica}
+  \}
+\]
+
+El estado general se expresa como $s = (\mathit{est},\,\sigma)$.
+
+\paragraph{Estado inicial.}
+\[
+  s_0 \;=\; (\mathrm{noAlarma},\;\infty).
+\]
+
+\paragraph{Transición externa.}
+\[
+\dext\bigl((\mathit{est},\,\sigma),\;e,\;(x,\,p)\bigr) =
+\begin{cases}
+  (\mathrm{alarmaCritica},\;0)
+    & p=0,\;x=\mathrm{alarmaCritica} \\[4pt]
+  (x,\;0)
+    & p=0,\;x\in\{\mathrm{alarmaBaja},\,\mathrm{alarmaMedia}\} \\[4pt]
+  (\mathrm{noAlarma},\;\infty)
+    & p=1,\;\mathit{est}\in\{\mathrm{espLargo},\,\mathrm{espCorto},\,\mathrm{repetirCritica}\} \\[4pt]
+  (\mathit{est},\;\sigma - e)
+    & \text{en otro caso}
+\end{cases}
+\]
+
+\paragraph{Transición interna.}
+\[
+\dint(\mathit{est},\,\sigma) =
+\begin{cases}
+  (\mathrm{noAlarma},\;\infty)       & \mathit{est}\in\{\mathrm{alarmaMedia},\,\mathrm{alarmaBaja}\} \\[4pt]
+  (\mathrm{espLargo},\;30)           & \mathit{est} = \mathrm{alarmaCritica} \\[4pt]
+  (\mathrm{repetirCritica},\;0)      & \mathit{est} = \mathrm{espLargo} \\[4pt]
+  (\mathrm{espCorto},\;10)           & \mathit{est} = \mathrm{repetirCritica} \\[4pt]
+  (\mathrm{repetirCritica},\;0)      & \mathit{est} = \mathrm{espCorto}
+\end{cases}
+\]
+
+\paragraph{Función de salida.}
+\[
+\lambda(\mathit{est},\,\sigma) =
+\begin{cases}
+  (\mathrm{alarmaCritica},\;0)
+    & \mathit{est}\in\{\mathrm{alarmaCritica},\,\mathrm{repetirCritica}\} \\[4pt]
+  (\mathit{est},\;0)
+    & \mathit{est}\in\{\mathrm{alarmaMedia},\,\mathrm{alarmaBaja}\}
+\end{cases}
+\]
+
+\paragraph{Avance temporal.}
+\[
+  \ta(\mathit{est},\,\sigma) \;=\; \sigma.
+\]
+
+\subsection{Diagrama de estados}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance=2.2cm and 3.2cm,
+    every state/.append style={minimum width=2.4cm}
+  ]
+
+  \node[state, initial above] (noA)  {noAlarma};
+  \node[state, below left=of noA]  (aB)   {alarmaBaja};
+  \node[state, below=of noA]       (aM)   {alarmaMedia};
+  \node[state, below right=of noA] (aC)   {alarmaCritica};
+
+  \node[state, below=2cm of aC]    (eL)   {espLargo\\$\sigma{=}30$};
+  \node[state, below=2cm of eL]    (rC)   {repetirCritica};
+  \node[state, right=of rC]        (eC)   {espCorto\\$\sigma{=}10$};
+
+  \path (noA) edge[bend right=10] node[left]  {\scriptsize alarmaBaja}   (aB)
+        (noA) edge                node[right] {\scriptsize alarmaMedia}  (aM)
+        (noA) edge[bend left=10] node[right] {\scriptsize alarmaCritica}(aC);
+
+  \path (aB)  edge[bend right=20] node[left]  {\scriptsize $\dint$} (noA)
+        (aM)  edge                node[left]  {\scriptsize $\dint$} (noA);
+
+  \path (aC)  edge node[right] {\scriptsize $\dint$: espLargo(30)} (eL)
+        (eL)  edge node[right] {\scriptsize $\dint$: repetir}      (rC)
+        (rC)  edge node[above] {\scriptsize $\dint$: espCorto(10)} (eC)
+        (eC)  edge[bend left=30]
+              node[right] {\scriptsize $\dint$: repetir}           (rC);
+
+  \path (eL)  edge[bend left=55, dashed]
+              node[above left] {\scriptsize confirm.} (noA)
+        (eC)  edge[bend right=60, dashed]
+              node[below right] {\scriptsize confirm.} (noA)
+        (rC)  edge[bend right=40, dashed]
+              node[below] {\scriptsize confirm.} (noA);
+
+\end{tikzpicture}
+\caption{Diagrama de estados del Módulo de Alarmas. Las transiciones punteadas representan $\dext$ de confirmación.}
+\label{fig:diag_alarmas}
+\end{figure}
