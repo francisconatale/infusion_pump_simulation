@@ -1,0 +1,40 @@
+\subsection{Análisis de Concurrencia y Matriz de Decisión para Validación}
+
+Con el objetivo de garantizar la completitud formal del modelo atómico del controlador ($M_{\mathrm{ctrl}}$) y verificar su comportamiento ante la coexistencia de múltiples eventos discretos, se desarrolla una matriz de decisión orientada al diseño de escenarios de prueba (\textit{testing}). La dinámica global del sistema DEVS acoplado introduce interacciones concurrentes críticas entre el lazo cerrado de control de flujo, el ciclo de desocupación de la bolsa de infusión y la reactividad estocástica del personal de enfermería. 
+
+El espacio de estados combinatorio e independiente del modelo da lugar a escenarios complejos donde las variables continuas conviven con transiciones discretas. En particular, la lógica de control del dispositivo debe discriminar con precisión cuándo aplicar los mecanismos de persistencia temporal ante anomalías de caudal —gestionados síncronamente mediante el contador discreteado de desviaciones consecutivas ($tol$)— en simultáneo con las alertas asíncronas de vaciado emitidas por el generador de fin de bolsa ($M_{\mathrm{bolsa}}$). 
+
+La siguiente tabla de decisión unifica el espacio de fases lógicas del núcleo del controlador y desglosa las reglas operativas coherentes que rigen el sistema. Cada regla mapea una tupla válida del vector de estado conjunto y define de forma determinística las acciones esperadas en la cola de salidas pendientes ($\mathit{acciones}$), sirviendo como plantilla estructural para la validación y el análisis de las trazas históricas recopiladas por el módulo de registro ($M_{\mathrm{logger}}$).
+
+\begin{table}[htbp]
+\centering
+\caption{Matriz de Decisión Unificada y Exhaustiva para Testing del Sistema Acoplado}
+\label{tab:matriz_decision_maestra}
+\footnotesize % Fuente un poco más compacta pero súper legible
+\setlength{\tabcolsep}{3.5pt} % Reduce el espacio vacío entre las columnas para achicar el ancho total
+\begin{tabular}{|l|*{14}{c|}}
+\hline
+\textbf{Condiciones de Estado} & \multicolumn{14}{c|}{\textbf{Reglas de Coexistencia / Escenarios de Simulación}} \\ \hline
+¿$est_{\mathrm{bolsa}} = \mathrm{llena}$?         & S & S & S & S & S & N & N & N & N & N & N & N & N & N \\ \hline
+¿$est_{\mathrm{bolsa}} = \mathrm{bolsaBaja}$?     & N & N & N & N & N & S & S & S & S & N & N & N & N & N \\ \hline
+¿$est_{\mathrm{bolsa}} = \mathrm{esperandoDetencion}$? & N & N & N & N & N & N & N & N & N & S & S & S & S & N \\ \hline
+¿$est_{\mathrm{bolsa}} = \mathrm{vacia}$?         & N & N & N & N & N & N & N & N & N & N & N & N & N & S \\ \hline
+¿$est_{\mathrm{flujo}} = \mathrm{normal}$?        & S & S & S & S & S & S & S & S & S & S & S & S & S & X \\ \hline
+¿$est_{\mathrm{flujo}} = \mathrm{estadoMedio}$?   & N & N & N & N & N & N & N & N & N & N & N & N & N & X \\ \hline
+¿$est_{\mathrm{flujo}} = \mathrm{estadoCritico}$? & N & N & N & N & N & N & N & N & N & N & N & N & N & X \\ \hline
+¿Condición $\mathrm{no\_tolerable}(cO, uCM)$?   & N & S & S & S & N & N & S & S & S & N & S & S & S & X \\ \hline
+¿Contador $tol = 0$?                              & S & S & N & N & N & S & S & N & N & S & S & N & N & X \\ \hline
+¿Contador $0 < tol < 5$?                          & N & N & S & N & S & N & N & S & N & N & N & S & N & X \\ \hline
+¿Contador $tol \ge 5$?                            & N & N & N & S & N & N & N & N & S & N & N & N & S & X \\ \hline
+¿$\mathit{fase}_{\mathrm{enf}} = \mathrm{idle}$?     & S & S & S & S & S & S & S & S & S & S & S & S & S & X \\ \hline
+\hline
+\textbf{Acciones / Respuestas Esperadas} & \multicolumn{14}{c|}{} \\ \hline
+Acción 1: Operación normal (Bomba activa)      & X &   &   &   &   &   &   &   &   &   &   &   &   &   \\ \hline
+Acción 2: Incrementar tolerancia ($tol + 1$)   &   & X & X &   &   &   & X & X &   &   & X & X &   &   \\ \hline
+Acción 3: Resetear tolerancia ($tol = 0$)       &   &   &   &   & X &   &   &   &   &   &   &   &   &   \\ \hline
+Acción 4: Encolar / Emitir $\mathrm{alarmaBaja}$    &   &   &   &   &   & X & X & X & X &   &   &   &   &   \\ \hline
+Acción 5: Cambiar a $\mathrm{estadoMedio}$ y $\mathrm{alarmaMedia}$ &   &   &   & X &   &   &   &   & X &   &   &   & X &   \\ \hline
+Acción 6: Mantener cuenta regresiva (Bolsa)    &   &   &   &   &   &   &   &   &   & X & X & X & X &   \\ \hline
+Acción 7: Absorción global e ignorar entradas  &   &   &   &   &   &   &   &   &   &   &   &   &   & X \\ \hline
+\end{tabular}
+\end{table}
