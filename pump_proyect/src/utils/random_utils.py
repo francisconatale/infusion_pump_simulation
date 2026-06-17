@@ -27,7 +27,6 @@ class RandomGenerator:
         while True:
             val = random.gauss(mu, sigma)
             
-            # Rechazar si está fuera de los límites
             if min_val is not None and val < min_val:
                 continue
             if max_val is not None and val > max_val:
