@@ -10,6 +10,7 @@ def main():
     model = PumpSystem(client_criticality=client_criticality)
 
     sim = Simulator(model)
+    sim.setTerminationTime(100)
     sim.setVerbose(None)
     sim.simulate()
 

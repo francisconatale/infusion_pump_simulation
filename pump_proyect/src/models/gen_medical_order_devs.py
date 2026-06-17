@@ -18,33 +18,40 @@ class MedicalOrderGenerator(AtomicDEVS):
 
 	def __init__(self, client_criticality=1.0):
 		super().__init__("MedicalOrderGenerator")
-		
+
 		self.out_order = self.addOutPort("out_order")
-		
+
 		self.factory = MedicalOrderFactory(client_criticality)
-		
+
 		self.current_order = self.factory.next_order()
 		self.hours_interval, self.ml_flow = self.current_order
+
+		self.state = {
+			"order": self.current_order,
+			"hours": self.hours_interval,
+			"ml": self.ml_flow
+		}
 		
 	def intTransition(self):
 		"""Internal transition: generate next order."""
 		self.current_order = self.factory.next_order()
 		self.hours_interval, self.ml_flow = self.current_order
+
+		self.state = {
+        	"order": self.current_order,
+        	"hours": self.hours_interval,
+        	"ml": self.ml_flow
+    	}
 		return self.state
 	
 	def outputFunction(self):
 		"""Output: emit the current order tuple."""
-		self.poke(self.out_order, self.current_order)
+		print("OUTPUT:", self.state)
+		return {
+            self.out_order: self.state
+        }
 	
 	def timeAdvance(self):
 		"""Time advance: hours until next order."""
 		return self.hours_interval
 	
-	@property
-	def state(self):
-		"""Return current state as dict."""
-		return {
-			"order": self.current_order,
-			"hours": self.hours_interval,
-			"ml": self.ml_flow
-		}

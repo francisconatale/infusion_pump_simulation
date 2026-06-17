@@ -9,8 +9,6 @@ class PumpSystem(CoupledDEVS):
         super().__init__("PumpSystem")
         self.client_criticality = client_criticality
         
-        # Inject medical order DEVS generator (emits orders parametrized by criticality)
-        self.add_component("medical_order_gen", MedicalOrderGenerator(client_criticality))
-
-    def add_component(self, name, component):
-        return 0
+        self.medical_order_gen = self.addSubModel(
+            MedicalOrderGenerator(client_criticality)
+        )
