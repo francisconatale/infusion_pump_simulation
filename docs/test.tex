@@ -1,0 +1,139 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Paquetes Necesarios ---
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{enumitem} % Control avanzado de listas (Requerido para los escenarios)
+\usepackage{siunitx}  % Formato profesional de unidades como segundos o ml/h
+\usepackage{amsmath}  % Soporte matemático para el formalismo DEVS
+
+% --- Configuración de Unidades ---
+\DeclareSIUnit\ml{ml}
+\DeclareSIUnit\hour{h}
+
+\begin{document}
+
+\section{Modelado del Generador de Confirmación de Enfermero}
+
+En versiones iniciales del modelo se consideró la posibilidad de representar al personal de enfermería como un proceso periódico, donde las rondas de supervisión ocurren de manera independiente del estado del sistema. Este enfoque corresponde a un esquema clásico de vigilancia preventiva, en el cual un agente externo inspecciona el sistema con una frecuencia determinada por parámetros de criticidad clínica.
+
+Sin embargo, en el contexto de este sistema de infusión, dicha representación introduce redundancia funcional, ya que la dinámica del sistema ya incluye mecanismos de detección y notificación basados en eventos (alarmas, fin de bolsa y desviaciones de flujo). En particular, el controlador y el módulo de alarmas ya encapsulan la detección de condiciones críticas de manera inmediata y determinística, mientras que el sensor provee retroalimentación continua del estado del flujo.
+
+\paragraph{Decisión de modelado.}
+Se adopta un enfoque reactivo para el generador de confirmación de enfermero, donde las intervenciones del personal de salud no se modelan como eventos periódicos, sino como respuestas directas a condiciones clínicas detectadas por el sistema. De este modo, el módulo de enfermería actúa exclusivamente ante la ocurrencia de eventos relevantes, tales como alarmas críticas o eventos de fin de bolsa.
+
+\paragraph{Justificación conceptual.}
+Esta decisión se fundamenta en la naturaleza del sistema modelado, el cual corresponde a un sistema de control basado en eventos discretos. En este tipo de sistemas, la semántica relevante no es la inspección periódica del estado, sino la reacción a cambios significativos del mismo. Por lo tanto, introducir un mecanismo periódico independiente no aporta capacidad expresiva adicional, sino que introduce posibles inconsistencias semánticas al duplicar funciones ya cubiertas por otros componentes del modelo.
+
+\paragraph{Justificación formal.}
+Desde la perspectiva DEVS, un generador periódico implicaría la existencia de una transición interna independiente del estado del sistema clínico, lo cual contradice el principio de acoplamiento basado en eventos. En cambio, un modelo reactivo puede representarse como un sistema pasivo con avance temporal infinito ($ta = \infty$), cuya única dinámica está dada por transiciones externas inducidas por eventos del sistema.
+
+\paragraph{Modelo adoptado.}
+En consecuencia, el módulo de enfermería se modela como un componente reactivo con retardo de respuesta, donde la confirmación no es generada periódicamente, sino tras la recepción de un evento clínico relevante y un tiempo de respuesta asociado al comportamiento humano.
+
+Este diseño garantiza coherencia semántica con el resto del sistema, reduce redundancia estructural y preserva la consistencia del modelo DEVS acoplado, manteniendo únicamente la dinámica necesaria para representar la intervención humana en situaciones relevantes. 
+
+% =========================================================================
+% NUEVA SECCIÓN DE VALIDACIÓN Y ESCENARIOS
+% =========================================================================
+
+\section{Escenarios de Simulación y Validación}
+
+Para evaluar el comportamiento temporal del sistema y verificar el cumplimiento estricto de las propiedades de seguridad (\textit{safety}) y vivacidad (\textit{liveness}), se diseñó una batería de escenarios de prueba. Estos escenarios combinan las restricciones físicas del hardware (período de muestreo del sensor de \SI{1}{\second} y latencia del actuador de \SI{0.5}{\second}) con la lógica reactiva del controlador y los diferentes retardos en la respuesta del personal de enfermería definidos en el modelo.
+
+\subsection{Escenarios de Funcionamiento Normal y Cambios de Orden}
+
+\begin{enumerate}[label=\textbf{Escenario \arabic*:}, leftmargin=*]
+    \item \textbf{Respuesta Dinámica al Cambio de Caudal (Sin Falla)}
+    \begin{itemize}
+        \item \textbf{Objetivo:} Validar el tiempo de inicio de la infusión y la estabilidad ante la actualización de la consigna médica.
+        \item \textbf{Secuencia:} 
+        \begin{itemize}
+            \item En $t = 0\,\text{s}$, se recibe una \texttt{ordenMedica} con un caudal de \SI{50}{\ml\per\hour}.
+            \item En $t = 20\,\text{s}$, se recibe una nueva \texttt{ordenMedica} que eleva el caudal a \SI{100}{\ml\per\hour}.
+        \end{itemize}
+        \item \textbf{Dinámica con Retardos:} Tras la primera orden, el sistema debe iniciar la infusión en menos de \SI{3}{\second}. Ante el cambio en $t = 20\,\text{s}$, el actuador aplica la modificación tras su latencia de \SI{0.5}{\second}, siendo registrado de forma escalonada por el sensor cada \SI{1}{\second}. El transitorio no debe disparar falsas alarmas.
+    \end{itemize}
+
+    \item \textbf{Detención Voluntaria por Orden Médica}
+    \begin{itemize}
+        \item \textbf{Objetivo:} Verificar el cumplimiento de la propiedad de seguridad ante una orden de caudal cero.
+        \item \textbf{Secuencia:}
+        \begin{itemize}
+            \item El sistema opera en régimen estable con un caudal de \SI{80}{\ml\per\hour}.
+            \item En $t = 15\,\text{s}$, se recibe una \texttt{ordenMedica} igual a \SI{0}{\ml\per\hour}.
+        \end{itemize}
+        \item \textbf{Dinámica con Retardos:} El controlador debe emitir inmediatamente la señal \texttt{detenerBomba}. El actuador procesa la parada física (\SI{0.5}{\second}), y las lecturas del sensor en $t = 16\,\text{s}$ y $t = 17\,\text{s}$ deben reflejar un caudal de \SI{0}{\ml\per\hour}. Al no haber alarmas, el módulo de enfermería permanece pasivo ($ta = \infty$).
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Escenarios de Falla de Flujo (Estrés del Controlador)}
+
+\begin{enumerate}[label=\textbf{Escenario \arabic*:}, startingvalue=3, leftmargin=*]
+    \item \textbf{Desvío Transitorio Corregido}
+    \begin{itemize}
+        \item \textbf{Objetivo:} Validar que el controlador tolera fluctuaciones breves en el flujo sin emitir alertas espurias.
+        \item \textbf{Secuencia:}
+        \begin{itemize}
+            \item El sistema infunde de forma estable a \SI{100}{\ml\per\hour}.
+            \item En $t = 10\,\text{s}$, una perturbación simulada reduce el caudal real a \SI{85}{\ml\per\hour} (desvío del $15\%$, superando el umbral permitido del $10\%$).
+            \item En $t = 13\,\text{s}$, el lazo de control corrige la anomalía y el flujo retorna a \SI{100}{\ml\per\hour}.
+        \end{itemize}
+        \item \textbf{Dinámica con Retardos:} El sensor captura la desviación en las muestras discretas de $t = 11\,\text{s}$, $t = 12\,\text{s}$ y $t = 13\,\text{s} $. Como la persistencia del fallo fue de \SI{3}{\second} (menor al límite de \SI{5}{\second}), el sistema no debe emitir \texttt{alarmaMedia}.
+    \end{itemize}
+
+    \item \textbf{Falla de Flujo Persistente y Detención Crítica}
+    \begin{itemize}
+        \item \textbf{Objetivo:} Evaluar la escala jerárquica de alarmas y la transición autónoma hacia el estado de parada por seguridad.
+        \item \textbf{Secuencia:}
+        \begin{itemize}
+            \item El sistema opera estable a \SI{100}{\ml\per\hour}.
+            \item En $t = 10\,\text{s}$, se induce una falla permanente (simulando una oclusión en la vía) que desploma el caudal a \SI{70}{\ml\per\hour} ($30\%$ de desvío).
+        \end{itemize}
+        \item \textbf{Dinámica con Retardos:} 
+        \begin{itemize}
+            \item En $t = 15\,\text{s}$ (tras \SI{5}{\second} continuos de desvío), el controlador dispara una \texttt{alarmaMedia}. El enfermero reactivo recibe el estímulo pero no interviene debido a la prioridad media de la alerta.
+            \item En $t = 20\,\text{s}$ (aplicando el criterio de diseño de \SI{5}{\second} adicionales sin corrección), el controlador determina la falla crítica, emite \texttt{alarmaCritica} y ejecuta la desconexión mediante \texttt{detenerBomba}.
+        \end{itemize}
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Escenarios de Intervención Humana (Validación del Modelo Reactivo)}
+
+\begin{enumerate}[label=\textbf{Escenario \arabic*:}, startingvalue=5, leftmargin=*]
+    \item \textbf{Alarma Crítica con Confirmación Oportuna}
+    \begin{itemize}
+        \item \textbf{Objetivo:} Verificar que el bucle de alertas se interrumpe si el personal de enfermería reacciona dentro del margen de seguridad.
+        \item \textbf{Secuencia:} El sistema entra en estado de \texttt{alarmaCritica} y parada de bomba en $t = 0\,\text{s}$ (continuación directa del Escenario 4).
+        \item \textbf{Dinámica con Retardos:} El componente del enfermero se parametriza con un retardo de reacción humana de \SI{12}{\second}. Al cumplirse $t = 12\,\text{s}$, el módulo de enfermería genera la salida \texttt{confirmacionEnfermero} hacia el controlador. La traza debe constatar que la alarma fue reconocida y que la bomba permanece detenida de forma segura sin haber repetido el aviso.
+    \end{itemize}
+
+    \item \textbf{Alarma Crítica No Confirmada (Bucle de Repetición)}
+    \begin{itemize}
+        \item \textbf{Objetivo:} Validar la propiedad de vivacidad que exige la repetición periódica de notificaciones críticas no atendidas.
+        \item \textbf{Secuencia:} El sistema dispara una \texttt{alarmaCritica} en $t = 0\,\text{s}$.
+        \item \textbf{Dinámica con Retardos:} Se asigna al enfermero reactivo un retardo largo de \SI{55}{\second} (simulando una distracción o ausencia). Al alcanzarse $t = 30\,\text{s}$ sin recibir confirmación, el módulo de alarmas debe reemitir la señal. La traza debe registrar nuevas repeticiones en $t = 40\,\text{s}$ y $t = 50\,\text{s}$ (período de repetición de \SI{10}{\second}). En $t = 55\,\text{s}$, el enfermero envía la \texttt{confirmacionEnfermero}, cesando inmediatamente las alertas.
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Escenarios de Fin de Bolsa}
+
+\begin{enumerate}[label=\textbf{Escenario \arabic*:}, startingvalue=7, leftmargin=*]
+    \item \textbf{Fin de Bolsa con Atención Humana Exitosa}
+    \begin{itemize}
+        \item \textbf{Objetivo:} Validar la respuesta del modelo ante el aviso preventivo de agotamiento de fluidos asistido por el operador.
+        \item \textbf{Secuencia:} En $t = 0\,\text{s}$, el sistema recibe el evento externo \texttt{finBolsa}.
+        \item \textbf{Dinámica con Retardos:} El controlador activa de inmediato la \texttt{alarmaBaja}. El enfermero reactivo percibe el estímulo y acude con un retardo de \SI{25}{\second}. A los \SI{25}{\second}, se introduce la confirmación/solución. Como el tiempo de atención fue menor al límite estricto de \SI{60}{\second}, la infusión continúa o se reconfigura de manera segura sin llegar al apagado forzoso.
+    \end{itemize}
+
+    \item \textbf{Fin de Bolsa Desatendido (Parada Automática de Emergencia)}
+    \begin{itemize}
+        \item \textbf{Objetivo:} Verificar el mecanismo de mitigación autónoma que impide la infusión de aire al agotarse la bolsa.
+        \item \textbf{Secuencia:} En $t = 0\,\text{s}$, se detecta la señal \texttt{finBolsa}.
+        \item \textbf{Dinámica con Retardos:} El controlador emite la \texttt{alarmaBaja}. Para esta prueba, el enfermero se configura con un retardo de \SI{90}{\second} (o se anula su intervención). El sistema permite que la infusión prosiga durante el conteo de protección. Al expirar exactamente $t = 60\,\text{s}$, el controlador ejecuta de forma autónoma la acción \texttt{detenerBomba}. El sensor debe validar un flujo de \SI{0}{\ml\per\hour} a partir de $t = 61\,\text{s}$.
+    \end{itemize}
+\end{enumerate}
+
+\end{document}
