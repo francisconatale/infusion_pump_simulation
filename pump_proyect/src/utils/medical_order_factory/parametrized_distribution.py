@@ -1,7 +1,7 @@
 from src.utils.random_utils import RandomGenerator
+from pypdevs.DEVS import AtomicDEVS
 
-
-class ParametrizedDistribution(AtomicDevs):
+class ParametrizedDistribution(AtomicDEVS):
 	"""
 	Parametrized discrete distribution for time between medical orders.
 

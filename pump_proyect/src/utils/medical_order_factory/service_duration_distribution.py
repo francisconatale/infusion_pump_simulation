@@ -1,4 +1,4 @@
-from src.models.parametrized_distribution import ParametrizedDistribution
+from src.utils.medical_order_factory.parametrized_distribution import ParametrizedDistribution
 
 
 class ServiceDurationDistribution(ParametrizedDistribution):
@@ -14,7 +14,7 @@ class ServiceDurationDistribution(ParametrizedDistribution):
     """
 
     def __init__(self, client_critical):
-	values = [2, 4, 6, 8, 12]
-		pc = [0.50, 0.30, 0.15, 0.05, 0.00]
-		pe = [0.00, 0.05, 0.15, 0.40, 0.40]
+        values = [2, 4, 6, 8, 12]
+        pc = [0.50, 0.30, 0.15, 0.05, 0.00]
+        pe = [0.00, 0.05, 0.15, 0.40, 0.40]
         super().__init__(client_critical, values, pc, pe)

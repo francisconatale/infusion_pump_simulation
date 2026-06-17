@@ -1,4 +1,4 @@
-from src.models.parametrized_distribution import ParametrizedDistribution
+from src.utils.medical_order_factory.parametrized_distribution import ParametrizedDistribution
 
 
 class MLGenerator(ParametrizedDistribution):

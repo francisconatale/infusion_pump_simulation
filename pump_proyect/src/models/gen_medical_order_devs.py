@@ -1,8 +1,8 @@
-from pypdevs.DEVS import AtomicDevs
+from pypdevs.DEVS import AtomicDEVS
 from src.utils.medical_order_factory.factory_medical_order import MedicalOrderFactory
 
 
-class MedicalOrderGenerator(AtomicDevs):
+class MedicalOrderGenerator(AtomicDEVS):
 	"""DEVS Generator for medical orders.
 	
 	Emits medical orders (hours, ml) tuples at regular intervals determined
