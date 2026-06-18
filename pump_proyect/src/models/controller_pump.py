@@ -90,7 +90,7 @@ class PumpController(AtomicDEVS):
         return no_tolerable(objective, last_sensor_medition)
 
     def timeAdvance(self):
-        uCM, cO, tol, est_flujo, est_bolsa, tau_bolsa, actions = self.get_vars()
+        _ , _ , _ , _, est_bolsa, tau_bolsa, actions = self.get_vars()
         if actions:
             return actions[0][1]
         elif est_bolsa == BagState.AWAIT_STOP_BAG:
