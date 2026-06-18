@@ -3,17 +3,16 @@ import random
 from enum import Enum
 from pypdevs.DEVS import AtomicDEVS
 
-# Enums retained and respected
 class FlowState(Enum):
-    NORMAL_FLOW = 1
-    MEDIUM_FLOW = 2
-    CRITICAL_FLOW = 3
+    NORMAL_FLOW = "normal_flow"
+    MEDIUM_FLOW = "medium_flow"
+    CRITICAL_FLOW = "critical_flow"
 
 class BagState(Enum):
-    NORMAL_BAG = 1
-    END_BAG = 2
-    EMPTY_BAG = 3
-    AWAIT_STOP_BAG = 4
+    NORMAL_BAG = "normal_bag"
+    END_BAG = "end_bag"
+    EMPTY_BAG = "empty_bag"
+    AWAIT_STOP_BAG = "await_stop_bag"
 
 def conLog(state, actions):
     """
