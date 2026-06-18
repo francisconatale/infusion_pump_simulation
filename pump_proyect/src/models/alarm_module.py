@@ -43,15 +43,15 @@ class AlarmModule(AtomicDEVS):
     def input_alarm_case(self, inputs):
         alarm = inputs[self.in_alarm]
 
-        if alarm.get_status() == AlarmState.CRITICAL_ALARM:
+        if alarm.get_status() == AlarmStatus.CRITICAL_ALARM:
             self.state = {
-                "alarm_state": AlarmState.CRITICAL_ALARM,
+                "alarm_state": AlarmStatus.CRITICAL_ALARM,
                 "hours": 0
             }
 
         elif alarm.get_status() in (
-            AlarmState.LOW_ALARM,
-            AlarmState.MEDIUM_ALARM
+            AlarmStatus.LOW_ALARM,
+            AlarmStatus.MEDIUM_ALARM
         ):
             self.state = {
                 "alarm_state": alarm.get_status(),
@@ -63,12 +63,12 @@ class AlarmModule(AtomicDEVS):
     def input_confirmation_case(self, inputs):
 
         if self.state["alarm_state"] in (
-            ModuleAlarmState.LONG_WAIT,
-            ModuleAlarmState.SHORT_WAIT,
-            ModuleAlarmState.REPEAT_CRITICAL
+            ModuleAlarmStatus.LONG_WAIT,
+            ModuleAlarmStatus.SHORT_WAIT,
+            ModuleAlarmStatus.REPEAT_CRITICAL
         ):
             self.state = {
-                "alarm_state": AlarmState.NO_ALARM,
+                "alarm_state": AlarmStatus.NO_ALARM,
                 "hours": infinity
             }
 
@@ -78,35 +78,35 @@ class AlarmModule(AtomicDEVS):
         current_state = self.state["alarm_state"]
 
         if current_state in (
-            AlarmState.LOW_ALARM,
-            AlarmState.MEDIUM_ALARM
+            AlarmStatus.LOW_ALARM,
+            AlarmStatus.MEDIUM_ALARM
         ):
             self.state = {
-                "alarm_state": AlarmState.NO_ALARM,
+                "alarm_state": AlarmStatus.NO_ALARM,
                 "hours": infinity
             }
 
-        elif current_state == AlarmState.CRITICAL_ALARM:
+        elif current_state == AlarmStatus.CRITICAL_ALARM:
             self.state = {
-                "alarm_state": ModuleAlarmState.LONG_WAIT,
+                "alarm_state": ModuleAlarmStatus.LONG_WAIT,
                 "hours": 30
             }
 
-        elif current_state == ModuleAlarmState.LONG_WAIT:
+        elif current_state == ModuleAlarmStatus.LONG_WAIT:
             self.state = {
-                "alarm_state": ModuleAlarmState.REPEAT_CRITICAL,
+                "alarm_state": ModuleAlarmStatus.REPEAT_CRITICAL,
                 "hours": 0
             }
 
-        elif current_state == ModuleAlarmState.REPEAT_CRITICAL:
+        elif current_state == ModuleAlarmStatus.REPEAT_CRITICAL:
             self.state = {
-                "alarm_state": ModuleAlarmState.SHORT_WAIT,
+                "alarm_state": ModuleAlarmStatus.SHORT_WAIT,
                 "hours": 10
             }
 
-        elif current_state == ModuleAlarmState.SHORT_WAIT:
+        elif current_state == ModuleAlarmStatus.SHORT_WAIT:
             self.state = {
-                "alarm_state": ModuleAlarmState.REPEAT_CRITICAL,
+                "alarm_state": ModuleAlarmStatus.REPEAT_CRITICAL,
                 "hours": 0
             }
 
@@ -115,16 +115,16 @@ class AlarmModule(AtomicDEVS):
     def outputFnc(self):
 
         if self.state["alarm_state"] in (
-            AlarmState.CRITICAL_ALARM,
-            ModuleAlarmState.REPEAT_CRITICAL
+            AlarmStatus.CRITICAL_ALARM,
+            ModuleAlarmStatus.REPEAT_CRITICAL
         ):
             return {
-                self.out_alarm: AlarmState.CRITICAL_ALARM
+                self.out_alarm: AlarmStatus.CRITICAL_ALARM
             }
 
         elif self.state["alarm_state"] in (
-            AlarmState.LOW_ALARM,
-            AlarmState.MEDIUM_ALARM
+            AlarmStatus.LOW_ALARM,
+            AlarmStatus.MEDIUM_ALARM
         ):
             return {
                 self.out_alarm: self.state["alarm_state"]
