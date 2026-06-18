@@ -1,6 +1,8 @@
 from enum import Enum
 import random
 from copy import deepcopy
+from pypdevs.DEVS import AtomicDEVS
+
 
 class NurseState(Enum):
     IDLE = "idle"
@@ -21,24 +23,34 @@ class GeneratorNurseConfirmation(AtomicDEVS):
         }
 
     def extTransition(self, inputs):
-        # get state
         state = deepcopy(self.state)
-        # build new state
+
         if self.in_alarm in inputs:
+            x = inputs[self.in_alarm]
+
             if state["phase"] == NurseState.IDLE:
-                state["sigma"] = random.uniform(5, 75)
                 state["phase"] = NurseState.WAITING_CONFIRMATION
+                state["sigma"] = random.uniform(5, 75)
+
             else:
                 state["sigma"] -= self.elapsed
-        # return new state
+
         return state
-    
+
     def intTransition(self):
-        return { "sigma": float("inf"), "phase": NurseState.IDLE }
+        state = deepcopy(self.state)
+
+        state["phase"] = NurseState.IDLE
+        state["sigma"] = float("inf")
+
+        return state
 
     def outputFnc(self):
-        if (self.state["phase"] == NurseState.WAITING_CONFIRMATION):
-            return { self.out_nurse_confirmation: "CONFIRMATION_NURSE" }
+        if self.state["phase"] == NurseState.WAITING_CONFIRMATION:
+            return {
+                self.out_nurse_confirmation: "CONFIRMATION_NURSE"
+            }
+        return {}
 
     def timeAdvance(self):
-	    return self.state["sigma"]
+        return self.state["sigma"]
