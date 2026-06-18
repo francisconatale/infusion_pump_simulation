@@ -1,5 +1,6 @@
 import src.utils.utils as Utils
 from src.models.gen_medical_order_devs import MedicalOrderGenerator
+from src.models.gen_bag_end import EndBagGenerator
 from pypdevs.DEVS import AtomicDEVS, CoupledDEVS
 
 
@@ -11,4 +12,8 @@ class PumpSystem(CoupledDEVS):
         
         self.medical_order_gen = self.addSubModel(
             MedicalOrderGenerator(client_criticality)
+        )
+
+        self.bag_end_gen = self.addSubModel(
+            EndBagGenerator()
         )
