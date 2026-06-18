@@ -17,3 +17,8 @@ class PumpSystem(CoupledDEVS):
         self.bag_end_gen = self.addSubModel(
             EndBagGenerator()
         )
+
+        self.connectPorts(
+            self.medical_order_gen.out_order,
+            self.bag_end_gen.in_order
+        )

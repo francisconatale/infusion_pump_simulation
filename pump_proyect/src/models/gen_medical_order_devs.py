@@ -44,11 +44,11 @@ class MedicalOrderGenerator(AtomicDEVS):
     	}
 		return self.state
 	
-	def outputFunction(self):
+	def outputFnc(self):
 		"""Output: emit the current order tuple."""
 		print("OUTPUT:", self.state)
 		return {
-            self.out_order: self.state
+            self.out_order: self.state["order"]
         }
 	
 	def timeAdvance(self):
