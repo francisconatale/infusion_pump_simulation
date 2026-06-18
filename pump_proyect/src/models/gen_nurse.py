@@ -47,9 +47,7 @@ class GeneratorNurseConfirmation(AtomicDEVS):
 
     def outputFnc(self):
         if self.state["phase"] == NurseState.WAITING_CONFIRMATION:
-            return {
-                self.out_nurse_confirmation: "CONFIRMATION_NURSE"
-            }
+            return { self.out_nurse_confirmation: "CONFIRMATION_NURSE" }
         return {}
 
     def timeAdvance(self):
