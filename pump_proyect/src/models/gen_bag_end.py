@@ -14,13 +14,14 @@ class EndBagGenerator(AtomicDEVS):
     def __init__(self):
         super().__init__("EndBagGenerator")
 
+        ## X
         self.in_order = self.addInPort("in_order")
+
+        ## Y
         self.out_end_bag = self.addOutPort("out_end_bag")
 
-        self.current_phase = "inactive"        
-        self.current_hours_interval = infinity
-
-        self.update_state(self.current_phase, self.current_hours_interval)
+        ## Initial state
+        self.update_state("inactive", infinity)
 
     def extTransition(self, inputs):
         e = self.elapsed
@@ -49,6 +50,11 @@ class EndBagGenerator(AtomicDEVS):
                 "inactive",
                 infinity
             )
+        else:
+            self.update_state(
+                "waitingDetention",
+                self.state["hours"] - e
+            )
 
         return self.state
 
@@ -73,13 +79,10 @@ class EndBagGenerator(AtomicDEVS):
         """Time advance: hours until next order."""
         return self.state["hours"]
 
-    def update_state(self,current_phase, hours_interval):
-        self.current_phase = current_phase
-        self.current_hours_interval = hours_interval
-
+    def update_state(self,current_phase, current_hours_interval):
         self.state = {
-            "phase": self.current_phase,
-            "hours": self.current_hours_interval
+            "phase": current_phase,
+            "hours": current_hours_interval
         }
     
     def time_bag(self):

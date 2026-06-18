@@ -1,4 +1,10 @@
 from pypdevs.DEVS import CoupledDEVS
+from src.models.gen_bag_end import EndBagGenerator
+from src.models.controller.controller_pump import PumpController
+from src.models.gen_nurse import GeneratorNurseConfirmation
+from src.models.gen_medical_order import MedicalOrderGenerator
+from src.models.sensor_flow import SensorFlow
+from src.models.logger import Logger
 
 class PumpSystem(CoupledDEVS):
     def __init__(self, client_criticality):
@@ -11,17 +17,21 @@ class PumpSystem(CoupledDEVS):
         )
     
         self.controller_pump = self.addSubModel(
-            ControllerPump()
+            PumpController()
         )
 
         self.nurse_confirmation_generator = self.addSubModel(
-            NurseConfirmationGenerator()
+            GeneratorNurseConfirmation()
         )
 
         self.sensor_flow = self.addSubModel(SensorFlow())
 
         self.medical_order_generator = self.addSubModel(
             MedicalOrderGenerator(client_criticality)
+        )
+
+        self.logger = self.addSubModel(
+            Logger()
         )
 
         self.connectPorts(
@@ -37,6 +47,9 @@ class PumpSystem(CoupledDEVS):
 
         self.connectPorts(self.nurse_confirmation_generator.out_confirmation,
                             self.controller_pump.in_nurse_confirmation)
+
+        self.connectPorts(self.controller_pump.out_log,
+                            self.logger.in_state_control)
 
         #   self.in_nurse_confirmation = self.addInPort("in_nurse_confirmation")
         
