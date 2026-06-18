@@ -19,7 +19,7 @@ class MedicalOrderGenerator(AtomicDEVS):
 	def __init__(self, client_criticality=1.0):
 		super().__init__("MedicalOrderGenerator")
 
-		self.out_order = self.addOutPort("out_medical_order")
+		self.out_medical_order = self.addOutPort("out_medical_order")
 
 		self.factory = MedicalOrderFactory(client_criticality)
 
