@@ -1,5 +1,6 @@
 from pypdevs.DEVS import AtomicDEVS
 from src.utils.medical_order_factory.factory_medical_order import MedicalOrderFactory
+from src.utils.random_utils import hours_to_seconds
 
 
 class MedicalOrderGenerator(AtomicDEVS):
@@ -46,11 +47,10 @@ class MedicalOrderGenerator(AtomicDEVS):
     
     def outputFnc(self) -> dict:
         """Output: emit the current order tuple."""
-        print("OUTPUT:", self.state)
         return {
             self.out_medical_order: [self.state["order"]]
         }
     
     def timeAdvance(self) -> float:
-        """Time advance: hours until next order."""
-        return self.hours_interval
+        """Time advance: seconds until next order."""
+        return hours_to_seconds(self.hours_interval)
