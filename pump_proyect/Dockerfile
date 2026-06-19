@@ -10,5 +10,7 @@ RUN git clone https://github.com/capocchi/PythonPDEVS.git && \
     cd PythonPDEVS/src && \
     python setup.py install
 
+COPY . .
+
 # Comando por defecto para correr tu simulación automáticamente
 CMD ["python", "main.py"]

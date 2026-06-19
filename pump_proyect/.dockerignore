@@ -1,0 +1,6 @@
+results.txt
+resultados.csv
+PythonPDEVS/
+.git/
+__pycache__/
+*.pyc

@@ -94,6 +94,23 @@ class PumpController(AtomicDEVS):
         state_before = copy.deepcopy(self.state) 
        
         if state["bag_state"][0] == BagState.EMPTY_BAG:
+            if self.in_medical_order in inputs:
+                _, c = inputs[self.in_medical_order][0]
+                if c > 0:
+                    state["bag_state"] = (BagState.NORMAL_BAG, float('inf'))
+                    state["flow_state"] = (FlowState.NORMAL_FLOW, 0.0)
+                    delay = random.uniform(0.0, 3.0)
+                    state["actions"] = conLog(
+                        state_before,
+                        [((PumpOutput.ADJUST_FLOW, c - state["last_sensor_medition"]), delay)]
+                    )
+                    state["medical_order"] = c
+                else:
+                    state["medical_order"] = c
+                    state["actions"] = conLog(
+                        state_before,
+                        [(PumpOutput.STOP_PUMP, 0.0)]
+                    )
             return state
             
         # common time decrement for tau_bolsa
