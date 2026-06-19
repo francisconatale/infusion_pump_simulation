@@ -1,6 +1,6 @@
 from enum import Enum
 import random
-from copy import deepcopy
+import copy
 from pypdevs.DEVS import AtomicDEVS
 
 
@@ -23,7 +23,7 @@ class GeneratorNurseConfirmation(AtomicDEVS):
         }
 
     def extTransition(self, inputs):
-        state = deepcopy(self.state)
+        state = copy(self.state)
 
         if self.in_alarm in inputs:
             x = inputs[self.in_alarm]
@@ -38,7 +38,7 @@ class GeneratorNurseConfirmation(AtomicDEVS):
         return state
 
     def intTransition(self):
-        state = deepcopy(self.state)
+        state = copy(self.state)
 
         state["phase"] = NurseState.IDLE
         state["sigma"] = float("inf")

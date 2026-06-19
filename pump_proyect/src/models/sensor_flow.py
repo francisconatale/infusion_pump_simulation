@@ -15,7 +15,7 @@ class SensorFlow(AtomicDEVS):
         }
 
     def extTransition(self, inputs):
-        state = copy.deepcopy(self.state)
+        state = copy.copy(self.state)
 
         if self.in_actuator in inputs:
             x = inputs[self.in_actuator]
@@ -26,7 +26,7 @@ class SensorFlow(AtomicDEVS):
         return state
 
     def intTransition(self):
-        state = copy.deepcopy(self.state)
+        state = copy.copy(self.state)
 
         state["sigma"] = 1
 
@@ -34,7 +34,7 @@ class SensorFlow(AtomicDEVS):
 
     def outputFnc(self):
         return {
-            self.out_flow_measurement: (self.state["current_flow"], 0)
+            self.out_flow_measurement: (self.state["current_flow"])
         }
 
     def timeAdvance(self):

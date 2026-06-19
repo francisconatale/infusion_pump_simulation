@@ -1,6 +1,7 @@
 import copy
 import random
 from enum import Enum
+from alarm_module import AlarmStatus
 from pypdevs.DEVS import AtomicDEVS
 
 class FlowState(Enum):
@@ -14,6 +15,24 @@ class BagState(Enum):
     EMPTY_BAG = "empty_bag"
     AWAIT_STOP_BAG = "await_stop_bag"
 
+class PumpOutput(Enum):
+    ADJUST_FLOW = "adjust_flow"
+    STOP_PUMP = "stop_pump"
+    LOW_ALARM = "low_alarm"
+    MEDIUM_ALARM = "medium_alarm"
+    CRITICAL_ALARM = "critical_alarm"
+    RECORD_EVENT = "record_event"
+
+    def get_status(self):
+        if self == PumpOutput.LOW_ALARM:
+            return AlarmStatus.LOW_ALARM
+        elif self == PumpOutput.MEDIUM_ALARM:
+            return AlarmStatus.MEDIUM_ALARM
+        elif self == PumpOutput.CRITICAL_ALARM:
+            return AlarmStatus.CRITICAL_ALARM
+        return AlarmStatus.NO_ALARM
+
+
 def conLog(state, actions):
     """
     Helper function corresponding to conLog(s, actions) from the LaTeX spec.
@@ -24,7 +43,7 @@ def conLog(state, actions):
     result = []
     for act, delay in actions:
         result.append((act, delay))
-        result.append((("registrarEvento", state_copy), 0.0))
+        result.append(((PumpOutput.RECORD_EVENT, state_copy), 0.0))
     return result
 
 def no_tolerable(cO, uCM):
@@ -45,8 +64,7 @@ class PumpController(AtomicDEVS):
         self.in_sensor_flow = self.addInPort("in_sensor_flow")
         self.in_nurse_confirmation = self.addInPort("in_nurse_confirmation")
         
-        self.out_adjust_flow = self.addOutPort("out_adjust_flow")
-        self.out_turn_off_bomb = self.addOutPort("out_turn_off_bomb")
+        self.out_flow = self.addOutPort("out_adjust_flow")
         self.out_alarm = self.addOutPort("out_alarm")
         self.out_log = self.addOutPort("out_log")
         
@@ -93,19 +111,18 @@ class PumpController(AtomicDEVS):
         
         # 1. medical order (port 0)
         if self.in_medical_order in inputs:
-            # inputs[self.in_medical_order] is tuple (hours_interval, flow_ml_h)
             _, c = inputs[self.in_medical_order]
             
             if c > 0:
                 delay = random.uniform(0.0, 3.0)
                 state["actions"] = conLog(
                     state_before,
-                    [(("ajustarCaudal", c - state["last_sensor_medition"]), delay)]
+                    [((PumpOutput.ADJUST_FLOW, c - state["last_sensor_medition"]), delay)]
                 )
             else:
                 state["actions"] = conLog(
                     state_before,
-                    [("detenerBomba", 0.0)]
+                    [(PumpOutput.STOP_PUMP, 0.0)]
                 )
             state["medical_order"] = c
             
@@ -116,14 +133,14 @@ class PumpController(AtomicDEVS):
             if state["flow_state"][1] >= 5 and state["flow_state"][0] == FlowState.MEDIUM_FLOW:
                 state["actions"] = conLog(
                     state_before,
-                    [("alarmaCritica", 0.0), ("detenerBomba", 0.0)]
+                    [(PumpOutput.CRITICAL_ALARM, 0.0), (PumpOutput.STOP_PUMP, 0.0)]
                 )
                 state["last_sensor_medition"] = x
                 state["flow_state"] = (FlowState.CRITICAL_FLOW, 0)
             elif state["flow_state"][1] >= 5 and state["flow_state"][0] == FlowState.NORMAL_FLOW:
                 state["actions"] = conLog(
                     state_before,
-                    [("alarmaMedia", 0.0)]
+                    [(PumpOutput.MEDIUM_ALARM, 0.0)]
                 )
                 state["last_sensor_medition"] = x
                 state["flow_state"] = (FlowState.MEDIUM_FLOW, 0)
@@ -141,7 +158,7 @@ class PumpController(AtomicDEVS):
             if state["bag_state"][0] == BagState.NORMAL_BAG:
                 state["actions"] = conLog(
                     state_before,
-                    [("alarmaBaja", 0.0)]
+                    [(PumpOutput.LOW_ALARM, 0.0)]
                 )
                 state["bag_state"] = (BagState.END_BAG, state["bag_state"][1])
             elif state["bag_state"][0] in (BagState.END_BAG, BagState.AWAIT_STOP_BAG, BagState.EMPTY_BAG):
@@ -153,7 +170,7 @@ class PumpController(AtomicDEVS):
         elif self.in_nurse_confirmation in inputs:
             state["actions"] = conLog(
                 state_before,
-                [(("ajustarCaudal", state["medical_order"] - state["last_sensor_medition"]), 0.0)]
+                [((PumpOutput.ADJUST_FLOW, state["medical_order"] - state["last_sensor_medition"]), 0.0)]
             )
             state["flow_state"] = (FlowState.NORMAL_FLOW, 0)
             
@@ -166,11 +183,11 @@ class PumpController(AtomicDEVS):
             state["actions"] = list(state["actions"])
             action, delay = state["actions"].pop(0)
             
-            if state["bag_state"][0] == BagState.END_BAG and action == "alarmaBaja":
+            if state["bag_state"][0] == BagState.END_BAG and action == PumpOutput.LOW_ALARM:
                 state["bag_state"] = (BagState.AWAIT_STOP_BAG, 60.0)
                 state["actions"] = []
                 
-            elif state["bag_state"][0] == BagState.EMPTY_BAG and action == "detenerBomba":
+            elif state["bag_state"][0] == BagState.EMPTY_BAG and action == PumpOutput.STOP_PUMP:
                 state["bag_state"] = (state["bag_state"][0], float('inf'))
                 state["actions"] = []
                 
@@ -180,7 +197,7 @@ class PumpController(AtomicDEVS):
                 state["bag_state"] = (BagState.EMPTY_BAG, 0.0)
                 state["actions"] = conLog(
                     state_snapshot,
-                    [("detenerBomba", 0.0)]
+                    [(PumpOutput.STOP_PUMP, 0.0)]
                 )
                 
         return state
@@ -189,12 +206,12 @@ class PumpController(AtomicDEVS):
         actions = self.state["actions"]
         if actions:
             action, delay = actions[0]
-            if isinstance(action, tuple) and action[0] == "ajustarCaudal":
-                return {self.out_adjust_flow: action[1]}
-            elif action == "detenerBomba":
-                return {self.out_turn_off_bomb: True}
-            elif action in ("alarmaBaja", "alarmaMedia", "alarmaCritica"):
+            if isinstance(action, tuple) and action[0] == PumpOutput.ADJUST_FLOW:
+                return {self.out_flow: ("AdjustFlow", action[1])}
+            elif action == PumpOutput.STOP_PUMP:
+                return {self.out_flow: ("OffBomb",0)}
+            elif action in (PumpOutput.LOW_ALARM, PumpOutput.MEDIUM_ALARM, PumpOutput.CRITICAL_ALARM):
                 return {self.out_alarm: action}
-            elif isinstance(action, tuple) and action[0] == "registrarEvento":
+            elif isinstance(action, tuple) and action[0] == PumpOutput.RECORD_EVENT:
                 return {self.out_log: action[1]}
         return {}
