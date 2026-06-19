@@ -94,13 +94,6 @@ class PumpController(AtomicDEVS):
         state_before = copy.deepcopy(self.state) 
        
         if state["bag_state"][0] == BagState.EMPTY_BAG:
-            state["bag_state"] = (
-                state["bag_state"][0],
-                max(0.0, state["bag_state"][1] - e) if state["bag_state"][1] != float('inf') else float('inf')
-            )
-            if state["actions"]:
-                state["actions"] = list(state["actions"])
-                state["actions"][0] = (state["actions"][0][0], max(0.0, state["actions"][0][1] - e))
             return state
             
         # common time decrement for tau_bolsa
@@ -185,11 +178,9 @@ class PumpController(AtomicDEVS):
             
             if state["bag_state"][0] == BagState.END_BAG and action == PumpOutput.LOW_ALARM:
                 state["bag_state"] = (BagState.AWAIT_STOP_BAG, 60.0)
-                state["actions"] = []
                 
             elif state["bag_state"][0] == BagState.EMPTY_BAG and action == PumpOutput.STOP_PUMP:
                 state["bag_state"] = (state["bag_state"][0], float('inf'))
-                state["actions"] = []
                 
         else:
             if state["bag_state"][0] == BagState.AWAIT_STOP_BAG:
