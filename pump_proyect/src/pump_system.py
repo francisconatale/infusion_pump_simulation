@@ -1,9 +1,10 @@
 from pypdevs.DEVS import CoupledDEVS
 from src.models.gen_bag_end import EndBagGenerator
-from src.models.controller.controller_pump import PumpController
+from src.models.controller_pump import PumpController
 from src.models.gen_nurse import GeneratorNurseConfirmation
 from src.models.gen_medical_order import MedicalOrderGenerator
 from src.models.sensor_flow import SensorFlow
+from src.models.alarm_module import AlarmModule
 from src.models.logger import Logger
 
 class PumpSystem(CoupledDEVS):
@@ -34,6 +35,10 @@ class PumpSystem(CoupledDEVS):
             Logger()
         )
 
+        self.alarm_module = self.addSubModel(
+            AlarmModule()
+        )
+
         self.connectPorts(
             self.medical_order_generator.out_medical_order,
             self.controller_pump.in_medical_order
@@ -50,6 +55,9 @@ class PumpSystem(CoupledDEVS):
 
         self.connectPorts(self.controller_pump.out_log,
                             self.logger.in_state_control)
+
+        self.connectPorts(self.controller_pump.out_alarm,
+                            self.alarm_module.in_alarm)
 
         #   self.in_nurse_confirmation = self.addInPort("in_nurse_confirmation")
         
