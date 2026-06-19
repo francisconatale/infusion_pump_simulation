@@ -48,7 +48,7 @@ class MedicalOrderGenerator(AtomicDEVS):
         """Output: emit the current order tuple."""
         print("OUTPUT:", self.state)
         return {
-            self.out_medical_order: self.state["order"]
+            self.out_medical_order: [self.state["order"]]
         }
     
     def timeAdvance(self) -> float:

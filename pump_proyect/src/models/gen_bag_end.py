@@ -29,7 +29,7 @@ class EndBagGenerator(AtomicDEVS):
         if self.in_order not in inputs:
             return self.state
 
-        hours, caudal = inputs[self.in_order]
+        hours, caudal = inputs[self.in_order][0]
 
         sx = "active" if caudal > 0 else "inactive"
 
@@ -70,7 +70,7 @@ class EndBagGenerator(AtomicDEVS):
     def outputFnc(self) -> dict:
         if self.state["phase"] == "programmed":
             return {
-                self.out_end_bag: ("endBag",)
+                self.out_end_bag: [("endBag",)]
             }
 
         return {}
@@ -89,4 +89,4 @@ class EndBagGenerator(AtomicDEVS):
         min_hours = hours_to_seconds(4)
         max_hours = hours_to_seconds(6)
 
-        return RandomGenerator.get_uniform(min_hours, max_hours)
+        return RandomGenerator.get_uniform(min_hours, max_hours)

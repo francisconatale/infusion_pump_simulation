@@ -18,7 +18,7 @@ class SensorFlow(AtomicDEVS):
         state = copy.copy(self.state)
 
         if self.in_actuator in inputs:
-            x = inputs[self.in_actuator]
+            x = inputs[self.in_actuator][0]
             state["current_flow"] = x
             if state["sigma"] == float("inf"):
                 state["sigma"] = 0.0
@@ -34,7 +34,7 @@ class SensorFlow(AtomicDEVS):
 
     def outputFnc(self) -> dict:
         return {
-            self.out_flow_measurement: self.state["current_flow"]
+            self.out_flow_measurement: [self.state["current_flow"]]
         }
 
     def timeAdvance(self) -> float:

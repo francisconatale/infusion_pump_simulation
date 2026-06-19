@@ -111,7 +111,7 @@ class PumpController(AtomicDEVS):
         
         # 1. medical order (port 0)
         if self.in_medical_order in inputs:
-            _, c = inputs[self.in_medical_order]
+            _, c = inputs[self.in_medical_order][0]
             
             if c > 0:
                 delay = random.uniform(0.0, 3.0)
@@ -128,7 +128,7 @@ class PumpController(AtomicDEVS):
             
         # 2. sensor flow (port 1)
         elif self.in_sensor_flow in inputs:
-            x = inputs[self.in_sensor_flow]
+            x = inputs[self.in_sensor_flow][0]
             
             if state["flow_state"][1] >= 5 and state["flow_state"][0] == FlowState.MEDIUM_FLOW:
                 state["actions"] = conLog(
@@ -207,12 +207,11 @@ class PumpController(AtomicDEVS):
         if actions:
             action, delay = actions[0]
             if isinstance(action, tuple) and action[0] == PumpOutput.ADJUST_FLOW:
-                return {self.out_flow: ("AdjustFlow", action[1])}
+                return {self.out_flow: [("AdjustFlow", action[1])]}
             elif action == PumpOutput.STOP_PUMP:
-                return {self.out_flow: ("OffBomb", 0)}
+                return {self.out_flow: [("OffBomb", 0)]}
             elif action in (PumpOutput.LOW_ALARM, PumpOutput.MEDIUM_ALARM, PumpOutput.CRITICAL_ALARM):
-                return {self.out_alarm: action}
+                return {self.out_alarm: [action]}
             elif isinstance(action, tuple) and action[0] == PumpOutput.RECORD_EVENT:
-                return {self.out_log: action[1]}
+                return {self.out_log: [action[1]]}
         return {}
-

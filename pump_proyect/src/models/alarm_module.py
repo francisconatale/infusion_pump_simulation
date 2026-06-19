@@ -41,7 +41,7 @@ class AlarmModule(AtomicDEVS):
         return self.state
 
     def input_alarm_case(self, inputs) -> dict:
-        alarm = inputs[self.in_alarm]
+        alarm = inputs[self.in_alarm][0]
         status = alarm.get_status() if hasattr(alarm, "get_status") else alarm
 
         if status == AlarmStatus.CRITICAL_ALARM:
@@ -118,7 +118,7 @@ class AlarmModule(AtomicDEVS):
             ModuleAlarmStatus.REPEAT_CRITICAL
         ):
             return {
-                self.out_alarm: AlarmStatus.CRITICAL_ALARM
+                self.out_alarm: [AlarmStatus.CRITICAL_ALARM]
             }
 
         elif self.state["alarm_state"] in (
@@ -126,10 +126,10 @@ class AlarmModule(AtomicDEVS):
             AlarmStatus.MEDIUM_ALARM
         ):
             return {
-                self.out_alarm: self.state["alarm_state"]
+                self.out_alarm: [self.state["alarm_state"]]
             }
 
         return {}
 
     def timeAdvance(self) -> float:
-        return self.state["hours"]
+        return self.state["hours"]

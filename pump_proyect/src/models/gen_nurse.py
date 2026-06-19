@@ -26,7 +26,7 @@ class GeneratorNurseConfirmation(AtomicDEVS):
         state = copy(self.state)
 
         if self.in_alarm in inputs:
-            x = inputs[self.in_alarm]
+            x = inputs[self.in_alarm][0]
 
             if state["phase"] == NurseState.IDLE:
                 state["phase"] = NurseState.WAITING_CONFIRMATION
@@ -47,7 +47,7 @@ class GeneratorNurseConfirmation(AtomicDEVS):
 
     def outputFnc(self) -> dict:
         if self.state["phase"] == NurseState.WAITING_CONFIRMATION:
-            return {self.out_confirmation: "CONFIRMATION_NURSE"}
+            return {self.out_confirmation: ["CONFIRMATION_NURSE"]}
         return {}
 
     def timeAdvance(self) -> float:

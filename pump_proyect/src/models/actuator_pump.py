@@ -22,7 +22,7 @@ class ActuatorPump(AtomicDEVS):
         state = copy.copy(self.state)
 
         if self.in_controller in inputs:
-            (action, delta) = inputs[self.in_controller]
+            (action, delta) = inputs[self.in_controller][0]
 
             if action == "AdjustFlow":
                 newCaudal = self.saturation(state["currentCaudal"], delta)
@@ -41,7 +41,7 @@ class ActuatorPump(AtomicDEVS):
         return state
 
     def outputFnc(self) -> dict:
-        return {self.out_sensor_flow: self.state["currentCaudal"]}
+        return {self.out_sensor_flow: [self.state["currentCaudal"]]}
 
     def timeAdvance(self) -> float:
         return self.state["sigma"]
@@ -50,4 +50,3 @@ class ActuatorPump(AtomicDEVS):
     def saturation(x: float, delta: float, alpha: float = 0.2) -> float:
         x_next = x + alpha * delta
         return max(0.0, min(200.0, x_next))
-
