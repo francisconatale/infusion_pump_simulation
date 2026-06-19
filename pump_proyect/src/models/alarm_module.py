@@ -63,6 +63,9 @@ class AlarmModule(AtomicDEVS):
 
     def input_confirmation_case(self, inputs) -> dict:
         if self.state["alarm_state"] in (
+            AlarmStatus.LOW_ALARM,
+            AlarmStatus.MEDIUM_ALARM,
+            AlarmStatus.CRITICAL_ALARM,
             ModuleAlarmStatus.LONG_WAIT,
             ModuleAlarmStatus.SHORT_WAIT,
             ModuleAlarmStatus.REPEAT_CRITICAL

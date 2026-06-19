@@ -24,33 +24,26 @@ class MedicalOrderGenerator(AtomicDEVS):
 
         self.factory = MedicalOrderFactory(client_criticality)
 
-        self.current_order = self.factory.next_order()
-        self.hours_interval, self.ml_flow = self.current_order
+        order = self.factory.next_order()
+        hours, ml = order
 
         self.state = {
-            "order": self.current_order,
-            "hours": self.hours_interval,
-            "ml": self.ml_flow
+            "sigma": 0.0,
+            "order": order,
+            "hours": hours,
+            "ml": ml
         }
-        
+
     def intTransition(self) -> dict:
-        """Internal transition: generate next order."""
-        self.current_order = self.factory.next_order()
-        self.hours_interval, self.ml_flow = self.current_order
-
-        self.state = {
-            "order": self.current_order,
-            "hours": self.hours_interval,
-            "ml": self.ml_flow
-        }
+        self.state["order"] = self.factory.next_order()
+        self.state["hours"], self.state["ml"] = self.state["order"]
+        self.state["sigma"] = hours_to_seconds(self.state["hours"])
         return self.state
-    
+
     def outputFnc(self) -> dict:
-        """Output: emit the current order tuple."""
         return {
             self.out_medical_order: [self.state["order"]]
         }
-    
+
     def timeAdvance(self) -> float:
-        """Time advance: seconds until next order."""
-        return hours_to_seconds(self.hours_interval)
+        return self.state["sigma"]

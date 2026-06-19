@@ -47,6 +47,7 @@ class ActuatorPump(AtomicDEVS):
         return self.state["sigma"]
     
     @staticmethod
-    def saturation(x: float, delta: float, alpha: float = 0.2) -> float:
+    def saturation(x: float, delta: float) -> float:
+        alpha = random.uniform(0.10, 0.30)
         x_next = x + alpha * delta
         return max(0.0, min(200.0, x_next))
