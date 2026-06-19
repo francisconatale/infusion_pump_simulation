@@ -10,32 +10,32 @@ class SensorFlow(AtomicDEVS):
         self.out_flow_measurement = self.addOutPort("out_flow_measurement")
 
         self.state = {
-            "current_flow": 0,
+            "current_flow": 0.0,
             "sigma": float("inf")
         }
 
-    def extTransition(self, inputs):
+    def extTransition(self, inputs) -> dict:
         state = copy.copy(self.state)
 
         if self.in_actuator in inputs:
             x = inputs[self.in_actuator]
-
-            state["sigma"] -= self.elapsed
             state["current_flow"] = x
+            if state["sigma"] == float("inf"):
+                state["sigma"] = 0.0
+            else:
+                state["sigma"] = max(0.0, state["sigma"] - self.elapsed)
 
         return state
 
-    def intTransition(self):
+    def intTransition(self) -> dict:
         state = copy.copy(self.state)
-
-        state["sigma"] = 1
-
+        state["sigma"] = 1.0
         return state
 
-    def outputFnc(self):
+    def outputFnc(self) -> dict:
         return {
-            self.out_flow_measurement: (self.state["current_flow"])
+            self.out_flow_measurement: self.state["current_flow"]
         }
 
-    def timeAdvance(self):
+    def timeAdvance(self) -> float:
         return self.state["sigma"]

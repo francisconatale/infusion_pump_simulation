@@ -1,5 +1,6 @@
 import copy
 import random
+from enum import Enum
 from pypdevs.DEVS import AtomicDEVS
 
 class ActuatorStatus(Enum):
@@ -12,37 +13,41 @@ class ActuatorPump(AtomicDEVS):
         self.in_controller = self.addInPort("in_controller")
         self.out_sensor_flow = self.addOutPort("out_sensor_flow")
         self.state = {
-                "currentCaudal": 0,
-                "status": ActuatorStatus.IDLE,
-                "sigma": float('inf')
-                } 
+            "currentCaudal": 0.0,
+            "status": ActuatorStatus.IDLE,
+            "sigma": float('inf')
+        } 
 
-    def extTransition(self, inputs):
+    def extTransition(self, inputs) -> dict:
         state = copy.copy(self.state)
 
         if self.in_controller in inputs:
             (action, delta) = inputs[self.in_controller]
 
-        if action == "AdjustFlow":
-            newCaudal = saturation(state["currentCaudal"] + delta)
-            state["currentCaudal"] = newCaudal
-            state["status"] = ActuatorStatus.RUNNING 
-            state["sigma"] = random.uniform(0, 5)
-        elif action == "OffBomb"
-            state["status"] = ActuatorStatus.IDLE
-            state["sigma"] = 0.0
+            if action == "AdjustFlow":
+                newCaudal = self.saturation(state["currentCaudal"], delta)
+                state["currentCaudal"] = newCaudal
+                state["status"] = ActuatorStatus.RUNNING 
+                state["sigma"] = random.uniform(0, 5)
+            elif action == "OffBomb":
+                state["status"] = ActuatorStatus.IDLE
+                state["sigma"] = 0.0
+        
         return state
 
-    def intTransition(self):
-        state = copy(self.state)
+    def intTransition(self) -> dict:
+        state = copy.copy(self.state)
         state["sigma"] = float('inf')
+        return state
 
-    def outputFnc(self):
-        return {self.out_sensor_flow: currentCaudal}
+    def outputFnc(self) -> dict:
+        return {self.out_sensor_flow: self.state["currentCaudal"]}
 
-    def timeAdvance(self):
+    def timeAdvance(self) -> float:
         return self.state["sigma"]
     
-    def saturation(x, delta, alpha=0.2):
+    @staticmethod
+    def saturation(x: float, delta: float, alpha: float = 0.2) -> float:
         x_next = x + alpha * delta
-        return max(0, min(200, x_next))
+        return max(0.0, min(200.0, x_next))
+

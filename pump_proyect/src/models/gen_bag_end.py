@@ -6,10 +6,10 @@ from math import inf as infinity
 # Generates how much does it take to finish a given bag of medication
 class EndBagGenerator(AtomicDEVS):
     """DEVS Generator for end of bag.
-	
+    
     Ports:
-	  - out_end_bag: output port emitting (hours_interval, flow_ml_h) tuples
-	"""
+      - out_end_bag: output port emitting (hours_interval, flow_ml_h) tuples
+    """
 
     def __init__(self):
         super().__init__("EndBagGenerator")
@@ -23,7 +23,7 @@ class EndBagGenerator(AtomicDEVS):
         ## Initial state
         self.update_state("inactive", infinity)
 
-    def extTransition(self, inputs):
+    def extTransition(self, inputs) -> dict:
         e = self.elapsed
 
         if self.in_order not in inputs:
@@ -58,7 +58,7 @@ class EndBagGenerator(AtomicDEVS):
 
         return self.state
 
-    def intTransition(self):
+    def intTransition(self) -> dict:
         """Internal transition: stay inactive until next call."""
         self.current_phase = "inactive"        
         self.current_hours_interval = infinity
@@ -67,7 +67,7 @@ class EndBagGenerator(AtomicDEVS):
 
         return self.state
 
-    def outputFnc(self):
+    def outputFnc(self) -> dict:
         if self.state["phase"] == "programmed":
             return {
                 self.out_end_bag: ("endBag",)
@@ -75,18 +75,18 @@ class EndBagGenerator(AtomicDEVS):
 
         return {}
 
-    def timeAdvance(self):
+    def timeAdvance(self) -> float:
         """Time advance: hours until next order."""
         return self.state["hours"]
 
-    def update_state(self,current_phase, current_hours_interval):
+    def update_state(self, current_phase: str, current_hours_interval: float) -> None:
         self.state = {
             "phase": current_phase,
             "hours": current_hours_interval
         }
     
-    def time_bag(self):
+    def time_bag(self) -> float:
         min_hours = hours_to_seconds(4)
         max_hours = hours_to_seconds(6)
 
-        return RandomGenerator.get_uniform(min_hours, max_hours)
+        return RandomGenerator.get_uniform(min_hours, max_hours)

@@ -1,7 +1,7 @@
 import copy
 import random
 from enum import Enum
-from alarm_module import AlarmStatus
+from src.models.alarm_module import AlarmStatus
 from pypdevs.DEVS import AtomicDEVS
 
 class FlowState(Enum):
@@ -23,7 +23,7 @@ class PumpOutput(Enum):
     CRITICAL_ALARM = "critical_alarm"
     RECORD_EVENT = "record_event"
 
-    def get_status(self):
+    def get_status(self) -> AlarmStatus:
         if self == PumpOutput.LOW_ALARM:
             return AlarmStatus.LOW_ALARM
         elif self == PumpOutput.MEDIUM_ALARM:
@@ -33,7 +33,7 @@ class PumpOutput(Enum):
         return AlarmStatus.NO_ALARM
 
 
-def conLog(state, actions):
+def conLog(state: dict, actions: list) -> list:
     """
     Helper function corresponding to conLog(s, actions) from the LaTeX spec.
     Appends a registrarEvento action with the snapshot of the state before the transition
@@ -46,7 +46,7 @@ def conLog(state, actions):
         result.append(((PumpOutput.RECORD_EVENT, state_copy), 0.0))
     return result
 
-def no_tolerable(cO, uCM):
+def no_tolerable(cO: float, uCM: float) -> bool:
     """
     Helper function to check if the difference between objective flow and measured flow exceeds 10%.
     """
@@ -77,10 +77,10 @@ class PumpController(AtomicDEVS):
             "actions": []                                     
         }
 
-    def tolerance_exceeded(self, last_sensor_medition, objective):
+    def tolerance_exceeded(self, last_sensor_medition: float, objective: float) -> bool:
         return no_tolerable(objective, last_sensor_medition)
 
-    def timeAdvance(self):
+    def timeAdvance(self) -> float:
         if self.state["actions"]:
             return self.state["actions"][0][1]
         elif self.state["bag_state"][0] == BagState.AWAIT_STOP_BAG:
@@ -88,7 +88,7 @@ class PumpController(AtomicDEVS):
         else:
             return float('inf')
 
-    def extTransition(self, inputs):
+    def extTransition(self, inputs) -> dict:
         state = copy.deepcopy(self.state)
         e = self.elapsed
         state_before = copy.deepcopy(self.state) 
@@ -176,7 +176,7 @@ class PumpController(AtomicDEVS):
             
         return state
 
-    def intTransition(self):
+    def intTransition(self) -> dict:
         state = copy.deepcopy(self.state)
         
         if state["actions"]:
@@ -202,16 +202,17 @@ class PumpController(AtomicDEVS):
                 
         return state
 
-    def outputFnc(self):
+    def outputFnc(self) -> dict:
         actions = self.state["actions"]
         if actions:
             action, delay = actions[0]
             if isinstance(action, tuple) and action[0] == PumpOutput.ADJUST_FLOW:
                 return {self.out_flow: ("AdjustFlow", action[1])}
             elif action == PumpOutput.STOP_PUMP:
-                return {self.out_flow: ("OffBomb",0)}
+                return {self.out_flow: ("OffBomb", 0)}
             elif action in (PumpOutput.LOW_ALARM, PumpOutput.MEDIUM_ALARM, PumpOutput.CRITICAL_ALARM):
                 return {self.out_alarm: action}
             elif isinstance(action, tuple) and action[0] == PumpOutput.RECORD_EVENT:
                 return {self.out_log: action[1]}
         return {}
+

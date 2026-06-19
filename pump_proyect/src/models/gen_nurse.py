@@ -1,6 +1,6 @@
 from enum import Enum
 import random
-import copy
+from copy import copy
 from pypdevs.DEVS import AtomicDEVS
 
 
@@ -15,14 +15,14 @@ class GeneratorNurseConfirmation(AtomicDEVS):
         super().__init__("GeneratorNurseConfirmation")
 
         self.in_alarm = self.addInPort("in_alarm")
-        self.out_nurse_confirmation = self.addOutPort("out_confirmation")
+        self.out_confirmation = self.addOutPort("out_confirmation")
 
         self.state = {
             "sigma": float("inf"),
             "phase": NurseState.IDLE
         }
 
-    def extTransition(self, inputs):
+    def extTransition(self, inputs) -> dict:
         state = copy(self.state)
 
         if self.in_alarm in inputs:
@@ -37,7 +37,7 @@ class GeneratorNurseConfirmation(AtomicDEVS):
 
         return state
 
-    def intTransition(self):
+    def intTransition(self) -> dict:
         state = copy(self.state)
 
         state["phase"] = NurseState.IDLE
@@ -45,10 +45,10 @@ class GeneratorNurseConfirmation(AtomicDEVS):
 
         return state
 
-    def outputFnc(self):
+    def outputFnc(self) -> dict:
         if self.state["phase"] == NurseState.WAITING_CONFIRMATION:
-            return { self.out_nurse_confirmation: "CONFIRMATION_NURSE" }
+            return {self.out_confirmation: "CONFIRMATION_NURSE"}
         return {}
 
-    def timeAdvance(self):
+    def timeAdvance(self) -> float:
         return self.state["sigma"]
