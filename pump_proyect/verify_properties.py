@@ -70,23 +70,14 @@ def verify_no_resume_after_critical_alarm(rows: List[Dict[str, Any]]) -> List[Di
 
     return violations
 
-def run_verification(file_path: str):
-    try:
-        rows = load_results(file_path)
-    except FileNotFoundError:
-        print(f"Error: The file '{file_path}' was not found. Please run the simulation first.", file=sys.stderr)
-        sys.exit(1)
-
-    properties = [
-        ("Tolerance Count Bound (0 <= tolerance_count <= 5)", verify_tolerance_bound),
-        ("Target Flow Limits (0 <= target_flow <= 200)", verify_flow_limits),
-        ("Request caudal zero and stop flow (target_flow = 0 => flow_state stays constant)", caudal_zero_stop_flow)
-    ]
-
+def _run_property_group(name, properties, rows):
     all_passed = True
+    print(f"\n{'='*60}")
+    print(f"  {name}")
+    print(f"{'='*60}")
 
-    for name, prop_fn in properties:
-        print(f"Verifying: {name}...")
+    for prop_name, prop_fn in properties:
+        print(f"\nVerifying: {prop_name}...")
         violations = []
         
         import inspect
@@ -110,21 +101,52 @@ def run_verification(file_path: str):
                 print(f"    - ... and {len(violations) - 5} more violations.")
         else:
             print("  \033[92mPASSED: Property holds for all records!\033[0m")
-        print()
 
-    print("Verifying: After critical alarm, pump must not resume infusion until nurse confirmation...")
-    ca_violations = verify_no_resume_after_critical_alarm(rows)
-    if ca_violations:
+    return all_passed
+
+def _run_stateful_property(prop_name, prop_fn, rows):
+    all_passed = True
+    print(f"\nVerifying: {prop_name}...")
+    violations = prop_fn(rows)
+    if violations:
         all_passed = False
-        for v in ca_violations[:5]:
+        for v in violations[:5]:
             print(f"    - Line {v['line']} (t={v['time']:.3f}): flow_state={v['flow_state']}, actual_flow={v['actual_flow']:.3f}")
-        if len(ca_violations) > 5:
-            print(f"    - ... and {len(ca_violations) - 5} more violations.")
+        if len(violations) > 5:
+            print(f"    - ... and {len(violations) - 5} more violations.")
     else:
         print("  \033[92mPASSED: Property holds for all records!\033[0m")
-    print()
+    return all_passed
 
-    if all_passed:
+def run_verification(file_path: str):
+    try:
+        rows = load_results(file_path)
+    except FileNotFoundError:
+        print(f"Error: The file '{file_path}' was not found. Please run the simulation first.", file=sys.stderr)
+        sys.exit(1)
+
+    safety_properties = [
+        ("Tolerance Count Bound (0 <= tolerance_count <= 5)", verify_tolerance_bound),
+        ("Target Flow Limits (0 <= target_flow <= 200)", verify_flow_limits),
+        ("Caudal zero => flow state stays constant", caudal_zero_stop_flow),
+    ]
+
+    safety_stateful = [
+        ("After critical alarm, pump must not resume infusion until nurse confirmation", verify_no_resume_after_critical_alarm),
+    ]
+
+    liveness_properties = []
+    temporal_properties = []
+
+    passed = True
+    passed &= _run_property_group("SAFETY PROPERTIES", safety_properties, rows)
+    for name, fn in safety_stateful:
+        passed &= _run_stateful_property(name, fn, rows)
+    passed &= _run_property_group("LIVENESS PROPERTIES", liveness_properties, rows)
+    passed &= _run_property_group("TEMPORAL PROPERTIES", temporal_properties, rows)
+
+    print()
+    if passed:
         print("\033[92mAll properties verified successfully!\033[0m")
         sys.exit(0)
     else:
