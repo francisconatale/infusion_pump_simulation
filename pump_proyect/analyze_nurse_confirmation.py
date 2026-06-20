@@ -12,28 +12,31 @@ def main():
         print(f"Error: {CSV_PATH} not found")
         sys.exit(1)
 
-    if "nurse_response_time" not in rows[0]:
-        print("Error: CSV does not have the expected columns.")
-        print("Run the simulation with the instrumented logger.")
-        sys.exit(1)
-
+    # Reconstruct response times from raw alarm + confirmation events
+    # Each confirmation is matched to the most recent unconfirmed alarm
+    pending_alarms = []
     bag_end = []
     medium = []
     critical = []
 
     for row in rows:
-        rt = row.get("nurse_response_time", "").strip()
-        if not rt:
-            continue
+        event_type = row["event_type"]
         t = float(row["time"])
-        val = float(rt)
-        alarm = row.get("responds_to_alarm", "")
-        if alarm == "low_alarm":
-            bag_end.append((t, val))
-        elif alarm == "medium_alarm":
-            medium.append((t, val))
-        elif alarm == "critical_alarm":
-            critical.append((t, val))
+
+        if event_type == "alarm":
+            alarm_type = row.get("alarm_state", "")
+            pending_alarms.append((alarm_type, t))
+
+        elif event_type == "nurse_confirmation":
+            if pending_alarms:
+                alarm_type, alarm_time = pending_alarms.pop()
+                rt = t - alarm_time
+                if alarm_type == "low_alarm":
+                    bag_end.append((alarm_time, rt))
+                elif alarm_type == "medium_alarm":
+                    medium.append((alarm_time, rt))
+                elif alarm_type == "critical_alarm":
+                    critical.append((alarm_time, rt))
 
     def display_stats(title, data, alarm_label):
         if not data:
@@ -41,11 +44,11 @@ def main():
             return
         print(f"\n{title}")
         print("-" * 55)
-        print(f"{'No.':>4s}  {'Event T':>10s}  {'Resp. T':>9s}  {'Delay':>8s}")
+        print(f"{'No.':>4s}  {'Alarm T':>10s}  {'Resp. T':>9s}  {'Delay':>8s}")
         print("-" * 55)
-        for i, (t, v) in enumerate(data, 1):
-            print(f"{i:>4d}  {t - v:>8.3f}s  {t:>8.3f}s  {v:>7.3f}s")
-        vals = [v for _, v in data]
+        for i, (alarm_t, rt) in enumerate(data, 1):
+            print(f"{i:>4d}  {alarm_t:>8.3f}s  {alarm_t + rt:>8.3f}s  {rt:>7.3f}s")
+        vals = [rt for _, rt in data]
         print("-" * 55)
         print(f"  Average: {sum(vals)/len(vals):.3f}s")
         print(f"  Minimum:   {min(vals):.3f}s")

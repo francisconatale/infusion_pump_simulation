@@ -37,7 +37,7 @@ class Logger(AtomicDEVS):
         "bag_state", "bag_time_remaining",
         "actual_flow", "target_flow",
         "medical_order", "actions_count", "actions",
-        "alarm_state", "nurse_response_time", "responds_to_alarm"
+        "alarm_state"
     ]
 
     def __init__(self):
@@ -58,14 +58,11 @@ class Logger(AtomicDEVS):
             "medical_order": 0, "actions_count": 0, "actions": "",
             "alarm_state": "no_alarm"
         }
-        self.last_alarm_time = None
-        self.last_alarm_type = ""
-
         self.state = {
             "accumulated_time": 0.0
         }
 
-    def _write_row(self, event_type, actual_flow, nurse_response_time="", responds_to_alarm=""):
+    def _write_row(self, event_type, actual_flow):
         actual_flow = actual_flow if actual_flow is not None else self.last_data["actual_flow"]
 
         self.writer.writerow([
@@ -81,8 +78,6 @@ class Logger(AtomicDEVS):
             self.last_data["actions_count"],
             self.last_data["actions"],
             self.last_data["alarm_state"],
-            nurse_response_time,
-            responds_to_alarm
         ])
         self.log_file.flush()
 
@@ -115,19 +110,10 @@ class Logger(AtomicDEVS):
             else:
                 alarm_type = str(alarm_msg)
             self.last_data["alarm_state"] = alarm_type
-            self.last_alarm_time = self.state["accumulated_time"]
-            self.last_alarm_type = alarm_type
             self._write_row("alarm", self.last_data["actual_flow"])
 
         if self.in_nurse_confirmation in inputs:
-            rt = ""
-            resp_alarm = ""
-            if self.last_alarm_time is not None:
-                rt = f"{self.state['accumulated_time'] - self.last_alarm_time:.3f}"
-                resp_alarm = self.last_alarm_type
-                self.last_alarm_time = None
-                self.last_alarm_type = ""
-            self._write_row("nurse_confirmation", self.last_data["actual_flow"], rt, resp_alarm)
+            self._write_row("nurse_confirmation", self.last_data["actual_flow"])
 
         return self.state
 
