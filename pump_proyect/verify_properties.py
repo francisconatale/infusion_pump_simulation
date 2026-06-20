@@ -21,7 +21,8 @@ def load_results(file_path: str) -> List[Dict[str, Any]]:
                     "target_flow": float(row["target_flow"]),
                     "medical_order": float(row["medical_order"]),
                     "actions_count": int(row["actions_count"]),
-                    "actions": row.get("actions", "")
+                    "actions": row.get("actions", ""),
+                    "alarm_state": row.get("alarm_state", "no_alarm")
                 }
                 rows.append(parsed_row)
             except KeyError as e:
@@ -175,6 +176,60 @@ def after_critical_alarm_pump_stays_stopped(rows: List[Dict[str, Any]]) -> List[
             violations.append(row)
     return violations
 
+def critical_alarm_repeats(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    violations = []
+
+    for i, row in enumerate(rows):
+        if "critical_alarm" not in row.get("actions", ""):
+            continue
+
+        confirmed = False
+        repeated = False
+
+        for j in range(i + 1, len(rows)):
+            if rows[j]["flow_state"] == "normal_flow":
+                confirmed = True
+                break
+
+            if "critical_alarm" in rows[j].get("actions", ""):
+                repeated = True
+                break
+
+        if not confirmed and not repeated:
+            violations.append(row)
+
+    return violations
+
+
+def critical_alarm_repeats_after_30s(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    violations = []
+
+    for i, row in enumerate(rows):
+        if "critical_alarm" not in row.get("actions", ""):
+            continue
+
+        t0 = row["time"]
+
+        confirmed = False
+        repeated = False
+
+        for j in range(i + 1, len(rows)):
+            if rows[j]["flow_state"] == "normal_flow":
+                confirmed = True
+                break
+
+            if rows[j]["time"] - t0 >= 40:
+                if ("critical_alarm" in rows[j].get("actions", "")
+                        or rows[j].get("alarm_state", "") == "critical_alarm"):
+                    repeated = True
+                break
+
+        if not confirmed and not repeated:
+            violations.append(row)
+
+    return violations
+
+
 def _run_property_group(name, properties, rows):
     all_passed = True
     print(f"\n{'='*60}")
@@ -249,6 +304,8 @@ def run_verification(file_path: str):
     temporal_properties = [
         ("Bag end must emit low alarm and stop infusion within 60 seconds", bag_end_emits_low_alarm_and_stops_in_60s),
         ("After critical alarm pump stays stopped until nurse confirmation", after_critical_alarm_pump_stays_stopped),
+        ("Unconfirmed critical alarm must repeat", critical_alarm_repeats),
+        ("Unconfirmed critical alarm must repeat after 30s (every 10s)", critical_alarm_repeats_after_30s),
     ]
 
     passed = True

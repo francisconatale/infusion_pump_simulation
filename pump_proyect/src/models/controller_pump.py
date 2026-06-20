@@ -162,7 +162,9 @@ class PumpController(AtomicDEVS):
                 )
                 state["last_sensor_medition"] = x
                 state["flow_state"] = (FlowState.CRITICAL_FLOW, 0)
-            if self.tolerance_exceeded(x, state["medical_order"]) and state["flow_state"][1] < 5:
+            if state["flow_state"][0] == FlowState.CRITICAL_FLOW:
+                state["last_sensor_medition"] = x
+            elif self.tolerance_exceeded(x, state["medical_order"]) and state["flow_state"][1] < 5:
                 state["last_sensor_medition"] = x
                 state["flow_state"] = (state["flow_state"][0], state["flow_state"][1] + 1)
                 if not state["actions"]:
