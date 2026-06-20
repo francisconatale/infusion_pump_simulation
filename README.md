@@ -36,5 +36,17 @@ docker run --rm -it \
     simulacion-bomba
 ```
 
-If the simulations runs without errors related with PythonDEVS or dependencis, the instalattion is correct
+If the simulations runs without errors related with PythonDEVS or dependences, the instalattion is correct
+
+
+## Execute Unit Tests
+
+In `pump_proyect/`:
+
+```bash
+docker run --rm -it \
+    -v $(pwd):/app \
+    simulacion-bomba pytest tests
+```
+
 
