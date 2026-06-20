@@ -69,6 +69,36 @@ def verify_no_resume_after_critical_alarm(rows: List[Dict[str, Any]]) -> List[Di
             violations.append(row)
 
     return violations
+def eventual_break_after_end_bag(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    violations = []
+    in_bag_end_episode = False
+    prev_bag_time = None
+
+    for row in rows:
+        bag_state = row["bag_state"]
+        bag_time = row["bag_time_remaining"]
+
+        if bag_state == "normal_bag":
+            in_bag_end_episode = False
+            prev_bag_time = None
+            continue
+
+        if not in_bag_end_episode:
+            in_bag_end_episode = True
+            prev_bag_time = bag_time
+            continue
+
+        if prev_bag_time is not None and bag_time != float('inf') and prev_bag_time != float('inf'):
+            if bag_time > prev_bag_time + 1e-9:
+                violations.append(row)
+
+        prev_bag_time = bag_time
+
+    return violations
+
+
+
+
 
 def _run_property_group(name, properties, rows):
     all_passed = True
@@ -133,6 +163,7 @@ def run_verification(file_path: str):
 
     safety_stateful = [
         ("After critical alarm, pump must not resume infusion until nurse confirmation", verify_no_resume_after_critical_alarm),
+        ("After bag end, bag time remaining must be monotonically non-increasing", eventual_break_after_end_bag),
     ]
 
     liveness_properties = []
