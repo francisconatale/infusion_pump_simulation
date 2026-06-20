@@ -1,7 +1,13 @@
+from enum import Enum
 from pypdevs.DEVS import AtomicDEVS
 from src.utils.random_utils import hours_to_seconds
 from src.utils.random_utils import RandomGenerator
 from math import inf as infinity
+
+class BagState(Enum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    PROGRAMMED = "programmed"
 
 # Generates how much does it take to finish a given bag of medication
 class EndBagGenerator(AtomicDEVS):
@@ -21,7 +27,10 @@ class EndBagGenerator(AtomicDEVS):
         self.out_end_bag = self.addOutPort("out_end_bag")
 
         ## Initial state
-        self.update_state("inactive", infinity)
+        self.state = {
+            "phase" : BagState.INACTIVE,
+            "hours" : infinity
+        }
 
     def extTransition(self, inputs) -> dict:
         e = self.elapsed
@@ -31,46 +40,32 @@ class EndBagGenerator(AtomicDEVS):
 
         hours, caudal = inputs[self.in_order][0]
 
-        sx = "active" if caudal > 0 else "inactive"
+        sx = BagState.ACTIVE if caudal > 0 else BagState.INACTIVE
 
-        if sx == "active" and self.state["phase"] == "inactive":
-            self.update_state(
-                "programmed",
-                self.time_bag()
-            )
+        if sx == BagState.ACTIVE and self.state["phase"] == BagState.INACTIVE:
+            self.state["phase"] = BagState.PROGRAMMED
+            self.state["hours"] = self.time_bag()
 
-        elif sx == "active" and self.state["phase"] == "programmed":
-            self.update_state(
-                "programmed",
-                self.state["hours"] - e
-            )
+        elif sx == BagState.ACTIVE and self.state["phase"] == BagState.PROGRAMMED:
+            self.state["hours"] = state["hours"] - e
 
-        elif sx == "inactive":
-            self.update_state(
-                "inactive",
-                infinity
-            )
-        else:
-            self.update_state(
-                "waitingDetention",
-                self.state["hours"] - e
-            )
+        elif sx == BagState.INACTIVE:
+            state["phase"] = BagState.INACTIVE
+            state["hours"] = infinity
 
         return self.state
 
     def intTransition(self) -> dict:
         """Internal transition: stay inactive until next call."""
-        self.current_phase = "inactive"        
-        self.current_hours_interval = infinity
-
-        self.update_state(self.current_phase, self.current_hours_interval)
+        state["phase"] = BagState.INACTIVE   
+        state["hours"] = infinity
 
         return self.state
 
     def outputFnc(self) -> dict:
-        if self.state["phase"] == "programmed":
+        if self.state["phase"] == BagState.PROGRAMMED:
             return {
-                self.out_end_bag: [("endBag",)]
+                self.out_end_bag: [("end_bag",)]
             }
 
         return {}
@@ -79,12 +74,6 @@ class EndBagGenerator(AtomicDEVS):
         """Time advance: hours until next order."""
         return self.state["hours"]
 
-    def update_state(self, current_phase: str, current_hours_interval: float) -> None:
-        self.state = {
-            "phase": current_phase,
-            "hours": current_hours_interval
-        }
-    
     def time_bag(self) -> float:
         min_hours = hours_to_seconds(4)
         max_hours = hours_to_seconds(6)
