@@ -105,6 +105,76 @@ def after_five_seconds_tolerancy_emits_medium_alert(rows: List[Dict[str, Any]]) 
             violations.append(next_row)
     return violations
 
+def medical_order_produces_action(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    violations = []
+    for i in range(len(rows) - 1):
+        curr_mo = rows[i]["medical_order"]
+        next_mo = rows[i + 1]["medical_order"]
+        if curr_mo == next_mo:
+            continue
+        pump_action = False
+        for j in range(i + 1, min(i + 4, len(rows))):
+            acts = rows[j].get("actions", "")
+            if "adjust_flow" in acts or "stop_pump" in acts:
+                pump_action = True
+                break
+        if not pump_action:
+            violations.append(rows[i + 1])
+    return violations
+
+def infusion_starts_under_3s(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    violations = []
+    for i in range(len(rows) - 1):
+        prev_mo = rows[i]["medical_order"]
+        curr_mo = rows[i + 1]["medical_order"]
+        if prev_mo == curr_mo or curr_mo <= 0:
+            continue
+        t_order = rows[i + 1]["time"]
+        found = False
+        for j in range(i + 1, len(rows)):
+            if rows[j]["time"] - t_order > 3.0:
+                break
+            if "adjust_flow" in rows[j].get("actions", ""):
+                found = True
+                break
+        if not found:
+            violations.append(rows[i + 1])
+    return violations
+
+def bag_end_emits_low_alarm_and_stops_in_60s(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    violations = []
+    for i in range(len(rows)):
+        if "low_alarm" not in rows[i].get("actions", "") or rows[i]["bag_state"] != "normal_bag":
+            continue
+        t_alarm = rows[i]["time"]
+        stopped = False
+        for j in range(i + 1, len(rows)):
+            if rows[j]["time"] - t_alarm > 60.5:
+                break
+            if "stop_pump" in rows[j].get("actions", ""):
+                stopped = True
+                break
+        if not stopped:
+            violations.append(rows[i])
+    return violations
+
+def after_critical_alarm_pump_stays_stopped(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    violations = []
+    blocked = False
+    for row in rows:
+        acts = row.get("actions", "")
+        if "critical_alarm" in acts and "stop_pump" in acts:
+            blocked = True
+            continue
+        if not blocked:
+            continue
+        if row["flow_state"] == "normal_flow":
+            blocked = False
+            continue
+        if row["flow_state"] not in ("critical_flow",):
+            violations.append(row)
+    return violations
+
 def _run_property_group(name, properties, rows):
     all_passed = True
     print(f"\n{'='*60}")
@@ -173,16 +243,30 @@ def run_verification(file_path: str):
     liveness_properties = [
         ("After bag end, bag time remaining must be monotonically non-increasing", eventual_break_after_end_bag),
         ("After 5 seconds of tolerance exceeded, medium alarm must be emitted", after_five_seconds_tolerancy_emits_medium_alert),
+        ("Every medical order must eventually produce a pump action", medical_order_produces_action),
+        ("Infusion must start within 3 seconds of receiving a positive medical order", infusion_starts_under_3s),
     ]
-    temporal_properties = []
+    temporal_properties = [
+        ("Bag end must emit low alarm and stop infusion within 60 seconds", bag_end_emits_low_alarm_and_stops_in_60s),
+        ("After critical alarm pump stays stopped until nurse confirmation", after_critical_alarm_pump_stays_stopped),
+    ]
 
     passed = True
     passed &= _run_property_group("SAFETY PROPERTIES", safety_properties, rows)
     for name, fn in safety_stateful:
         passed &= _run_stateful_property(name, fn, rows)
+    if liveness_properties:
+        print(f"\n{'='*60}")
+        print("  LIVENESS PROPERTIES")
+        print(f"{'='*60}")
     for name, fn in liveness_properties:
         passed &= _run_stateful_property(name, fn, rows)
-    passed &= _run_property_group("TEMPORAL PROPERTIES", temporal_properties, rows)
+    if temporal_properties:
+        print(f"\n{'='*60}")
+        print("  TEMPORAL PROPERTIES")
+        print(f"{'='*60}")
+    for name, fn in temporal_properties:
+        passed &= _run_stateful_property(name, fn, rows)
 
     print()
     if passed:
