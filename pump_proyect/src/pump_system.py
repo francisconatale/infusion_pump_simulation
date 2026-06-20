@@ -110,6 +110,12 @@ class PumpSystem(CoupledDEVS):
             self.alarm_module.in_nurse_confirmation
         )
 
+        # ── IC: M_enf → M_logger (confirmacion del enfermero) ──
+        self.connectPorts(
+            self.nurse_confirmation_generator.out_confirmation,
+            self.logger.in_nurse_confirmation
+        )
+
         # ── IC: M_ctrl → M_logger ──
         self.connectPorts(
             self.controller_pump.out_log,
