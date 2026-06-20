@@ -35,10 +35,17 @@ class AlarmModule(AtomicDEVS):
             return self.input_alarm_case(inputs)
 
         elif self.in_nurse_confirmation in inputs:
-            return self.input_confirmation_case(inputs)
+            if  self.state["alarm_state"] in ( ModuleAlarmStatus.LONG_WAIT, ModuleAlarmStatus.SHORT_WAIT, ModuleAlarmStatus.REPEAT_CRITICAL):
+                self.state = {
+                    "alarm_state": AlarmStatus.NO_ALARM,
+                    "hours": infinity
+                }
+                return self.state
+        
+        self.state["hours"] = max(0.0, self.state["hours"] - e)
 
-        self.state["hours"] -= e
         return self.state
+        
 
     def input_alarm_case(self, inputs) -> dict:
         alarm = inputs[self.in_alarm][0]
@@ -57,22 +64,6 @@ class AlarmModule(AtomicDEVS):
             self.state = {
                 "alarm_state": status,
                 "hours": 0.0
-            }
-
-        return self.state
-
-    def input_confirmation_case(self, inputs) -> dict:
-        if self.state["alarm_state"] in (
-            AlarmStatus.LOW_ALARM,
-            AlarmStatus.MEDIUM_ALARM,
-            AlarmStatus.CRITICAL_ALARM,
-            ModuleAlarmStatus.LONG_WAIT,
-            ModuleAlarmStatus.SHORT_WAIT,
-            ModuleAlarmStatus.REPEAT_CRITICAL
-        ):
-            self.state = {
-                "alarm_state": AlarmStatus.NO_ALARM,
-                "hours": infinity
             }
 
         return self.state

@@ -47,18 +47,18 @@ class EndBagGenerator(AtomicDEVS):
             self.state["hours"] = self.time_bag()
 
         elif sx == BagState.ACTIVE and self.state["phase"] == BagState.PROGRAMMED:
-            self.state["hours"] = state["hours"] - e
+            self.state["hours"] = self.state["hours"] - e
 
         elif sx == BagState.INACTIVE:
-            state["phase"] = BagState.INACTIVE
-            state["hours"] = infinity
+            self.state["phase"] = BagState.INACTIVE
+            self.state["hours"] = infinity
 
         return self.state
 
     def intTransition(self) -> dict:
         """Internal transition: stay inactive until next call."""
-        state["phase"] = BagState.INACTIVE   
-        state["hours"] = infinity
+        self.state["phase"] = BagState.INACTIVE   
+        self.state["hours"] = infinity
 
         return self.state
 
