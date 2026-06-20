@@ -162,16 +162,22 @@ class PumpController(AtomicDEVS):
                 )
                 state["last_sensor_medition"] = x
                 state["flow_state"] = (FlowState.CRITICAL_FLOW, 0)
-            elif self.tolerance_exceeded(x, state["medical_order"]) and state["flow_state"][1] < 5:
+            if self.tolerance_exceeded(x, state["medical_order"]) and state["flow_state"][1] < 5:
                 state["last_sensor_medition"] = x
                 state["flow_state"] = (state["flow_state"][0], state["flow_state"][1] + 1)
                 if not state["actions"]:
-                    state["actions"] = [((PumpOutput.RECORD_EVENT, copy.deepcopy(state)), 0.0)]
+                    adjust = ((PumpOutput.ADJUST_FLOW, state["medical_order"] - x), 0.0)
+                    state["actions"] = [adjust]
+                    snapshot = copy.deepcopy(state)
+                    state["actions"].append(((PumpOutput.RECORD_EVENT, snapshot), 0.0))
             else:
                 state["last_sensor_medition"] = x
                 state["flow_state"] = (state["flow_state"][0], 0)
                 if not state["actions"]:
-                    state["actions"] = [((PumpOutput.RECORD_EVENT, copy.deepcopy(state)), 0.0)]
+                    adjust = ((PumpOutput.ADJUST_FLOW, state["medical_order"] - x), 0.0)
+                    state["actions"] = [adjust]
+                    snapshot = copy.deepcopy(state)
+                    state["actions"].append(((PumpOutput.RECORD_EVENT, snapshot), 0.0))
                 
         # 3. end of bag signal (port 2)
         elif self.in_end_bag in inputs:
