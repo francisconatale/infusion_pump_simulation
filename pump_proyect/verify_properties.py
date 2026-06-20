@@ -96,9 +96,14 @@ def eventual_break_after_end_bag(rows: List[Dict[str, Any]]) -> List[Dict[str, A
 
     return violations
 
-
-
-
+def after_five_seconds_tolerancy_emits_medium_alert(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    violations = []
+    for row, next_row in zip(rows, rows[1:]):
+        if (row["tolerance_count"] == 5 and row["flow_state"] == "normal_flow"
+                and "medium_alarm" not in row.get("actions", "")
+                and "medium_alarm" not in next_row.get("actions", "")):
+            violations.append(next_row)
+    return violations
 
 def _run_property_group(name, properties, rows):
     all_passed = True
@@ -163,17 +168,20 @@ def run_verification(file_path: str):
 
     safety_stateful = [
         ("After critical alarm, pump must not resume infusion until nurse confirmation", verify_no_resume_after_critical_alarm),
-        ("After bag end, bag time remaining must be monotonically non-increasing", eventual_break_after_end_bag),
     ]
 
-    liveness_properties = []
+    liveness_properties = [
+        ("After bag end, bag time remaining must be monotonically non-increasing", eventual_break_after_end_bag),
+        ("After 5 seconds of tolerance exceeded, medium alarm must be emitted", after_five_seconds_tolerancy_emits_medium_alert),
+    ]
     temporal_properties = []
 
     passed = True
     passed &= _run_property_group("SAFETY PROPERTIES", safety_properties, rows)
     for name, fn in safety_stateful:
         passed &= _run_stateful_property(name, fn, rows)
-    passed &= _run_property_group("LIVENESS PROPERTIES", liveness_properties, rows)
+    for name, fn in liveness_properties:
+        passed &= _run_stateful_property(name, fn, rows)
     passed &= _run_property_group("TEMPORAL PROPERTIES", temporal_properties, rows)
 
     print()
