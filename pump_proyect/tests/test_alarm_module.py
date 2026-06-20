@@ -17,19 +17,26 @@ def test_initial_state():
     assert alarm.state["hours"] == infinity
     assert alarm.timeAdvance() == infinity
 
+@pytest.mark.parametrize(
+    "alarm_status",
+    [   
+        AlarmStatus.LOW_ALARM,
+        AlarmStatus.MEDIUM_ALARM
+    ]
+)
 
-def test_low_alarm_flow():
+def test_low_or_medium_alarm_flow(alarm_status):
     alarm = AlarmModule()
 
     alarm.extTransition({
-        alarm.in_alarm: [AlarmStatus.LOW_ALARM]
+        alarm.in_alarm: [alarm_status]
     })
 
-    assert alarm.state["alarm_state"] == AlarmStatus.LOW_ALARM
+    assert alarm.state["alarm_state"] == alarm_status
     assert alarm.timeAdvance() == 0.0
 
     assert alarm.outputFnc() == {
-        alarm.out_alarm: [AlarmStatus.LOW_ALARM]
+        alarm.out_alarm:  [alarm_status]
     }
 
     alarm.intTransition()
@@ -38,27 +45,7 @@ def test_low_alarm_flow():
     assert alarm.state["hours"] == infinity
 
 
-def test_medium_alarm_flow():
-    alarm = AlarmModule()
-
-    alarm.extTransition({
-        alarm.in_alarm: [AlarmStatus.MEDIUM_ALARM]
-    })
-
-    assert alarm.state["alarm_state"] == AlarmStatus.MEDIUM_ALARM
-    assert alarm.timeAdvance() == 0.0
-
-    assert alarm.outputFnc() == {
-        alarm.out_alarm: [AlarmStatus.MEDIUM_ALARM]
-    }
-
-    alarm.intTransition()
-
-    assert alarm.state["alarm_state"] == AlarmStatus.NO_ALARM
-    assert alarm.state["hours"] == infinity
-
-
-def test_critical_alarm_cycle():
+def test_correct_transition_to_long_wait():
     alarm = AlarmModule()
 
     alarm.extTransition({
@@ -79,38 +66,78 @@ def test_critical_alarm_cycle():
     # LONG_WAIT doesnt output anything
     assert alarm.outputFnc() == {}
 
+
+def test_correct_transition_to_repeat_critical():
+    alarm = AlarmModule()
+
+    ## set long wait
+    alarm.state = {
+        "alarm_state": ModuleAlarmStatus.LONG_WAIT,
+        "hours": 30.0
+    }
+
     # LONG_WAIT -> REPEAT_CRITICAL
     alarm.intTransition()
 
     assert alarm.state["alarm_state"] == ModuleAlarmStatus.REPEAT_CRITICAL
     assert alarm.timeAdvance() == 0.0
-
     # Second ouput
     assert alarm.outputFnc() == {
         alarm.out_alarm: [AlarmStatus.CRITICAL_ALARM]
     }
 
-    # REPEAT_CRITICAL -> SHORT_WAIT
+
+def test_correct_transition_to_short_wait():
+    alarm = AlarmModule()
+
+    ## set short wait
+    alarm.state = {
+        "alarm_state": ModuleAlarmStatus.SHORT_WAIT,
+        "hours": 10.0
+    }
+
+    
+    for i in range(10):
+        # SHORT_WAIT doesn't output anything
+        assert alarm.outputFnc() == {}
+
+        # SHORT_WAIT -> REPEAT_CRITICAL
+        alarm.intTransition()
+        
+        assert alarm.state["alarm_state"] == ModuleAlarmStatus.REPEAT_CRITICAL
+        assert alarm.timeAdvance() == 0.0
+
+        # Third output
+        assert alarm.outputFnc() == {
+            alarm.out_alarm: [AlarmStatus.CRITICAL_ALARM]
+        }
+
+        # REPEAT_CRITICAL -> SHORT_WAIT
+        alarm.intTransition()
+
+        assert alarm.state["alarm_state"] == ModuleAlarmStatus.SHORT_WAIT
+        assert alarm.timeAdvance() == 10.0
+
+    ## and so on until nurse confirmation
+
+def test_from_long_wait_to_short_wait():
+    alarm = AlarmModule()
+
+    ## set long wait
+    alarm.state = {
+        "alarm_state": ModuleAlarmStatus.LONG_WAIT,
+        "hours": 30.0
+    }
+
+    ## Long wait -> repeat
+    alarm.intTransition()
+
+    ## Repeat -> Short wait
     alarm.intTransition()
 
     assert alarm.state["alarm_state"] == ModuleAlarmStatus.SHORT_WAIT
     assert alarm.timeAdvance() == 10.0
 
-    # SHORT_WAIT doesn't output anything
-    assert alarm.outputFnc() == {}
-
-    # SHORT_WAIT -> REPEAT_CRITICAL
-    alarm.intTransition()
-
-    assert alarm.state["alarm_state"] == ModuleAlarmStatus.REPEAT_CRITICAL
-    assert alarm.timeAdvance() == 0.0
-
-    # Third output
-    assert alarm.outputFnc() == {
-        alarm.out_alarm: [AlarmStatus.CRITICAL_ALARM]
-    }
-
-    ## and so on until nurse confirmation
 
 # --- NURSE CONFIRMATION INPUT ---
 
