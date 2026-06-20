@@ -116,6 +116,12 @@ class PumpSystem(CoupledDEVS):
             self.logger.in_state_control
         )
 
+        # ── IC: M_alarmas → M_logger ──
+        self.connectPorts(
+            self.alarm_module.out_alarm,
+            self.logger.in_alarm_module
+        )
+
         # ── EOC: M_alarmas → N ──
         self.connectPorts(
             self.alarm_module.out_alarm,
