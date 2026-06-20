@@ -40,6 +40,7 @@ def conLog(state: dict, actions: list) -> list:
     immediately after each action in the queue.
     """
     state_copy = copy.deepcopy(state)
+    state_copy["actions"] = list(actions)
     result = []
     for act, delay in actions:
         result.append((act, delay))

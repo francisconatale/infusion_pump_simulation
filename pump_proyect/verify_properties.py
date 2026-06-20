@@ -20,7 +20,8 @@ def load_results(file_path: str) -> List[Dict[str, Any]]:
                     "actual_flow": float(row["actual_flow"]),
                     "target_flow": float(row["target_flow"]),
                     "medical_order": float(row["medical_order"]),
-                    "actions_count": int(row["actions_count"])
+                    "actions_count": int(row["actions_count"]),
+                    "actions": row.get("actions", "")
                 }
                 rows.append(parsed_row)
             except KeyError as e:
@@ -45,8 +46,29 @@ def caudal_zero_stop_flow(actual: Dict[str, Any], next_row: Dict[str, Any]) -> b
     if target_actual == 0.0:
         return actual_flow == actual_target
     return True
-        
 
+def verify_no_resume_after_critical_alarm(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    violations = []
+    blocked = False
+
+    for row in rows:
+        actions = row.get("actions", "")
+
+        if "critical_alarm" in actions and "stop_pump" in actions:
+            blocked = True
+            continue
+
+        if not blocked:
+            continue
+
+        if row["flow_state"] == "normal_flow":
+            blocked = False
+            continue
+
+        if row["flow_state"] not in ("critical_flow",):
+            violations.append(row)
+
+    return violations
 
 def run_verification(file_path: str):
     try:
@@ -89,6 +111,18 @@ def run_verification(file_path: str):
         else:
             print("  \033[92mPASSED: Property holds for all records!\033[0m")
         print()
+
+    print("Verifying: After critical alarm, pump must not resume infusion until nurse confirmation...")
+    ca_violations = verify_no_resume_after_critical_alarm(rows)
+    if ca_violations:
+        all_passed = False
+        for v in ca_violations[:5]:
+            print(f"    - Line {v['line']} (t={v['time']:.3f}): flow_state={v['flow_state']}, actual_flow={v['actual_flow']:.3f}")
+        if len(ca_violations) > 5:
+            print(f"    - ... and {len(ca_violations) - 5} more violations.")
+    else:
+        print("  \033[92mPASSED: Property holds for all records!\033[0m")
+    print()
 
     if all_passed:
         print("\033[92mAll properties verified successfully!\033[0m")
