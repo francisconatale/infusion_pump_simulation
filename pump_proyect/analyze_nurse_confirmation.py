@@ -9,16 +9,17 @@ def main():
         with open(CSV_PATH) as f:
             rows = list(csv.DictReader(f))
     except FileNotFoundError:
-        print(f"Error: no se encuentra {CSV_PATH}")
+        print(f"Error: {CSV_PATH} not found")
         sys.exit(1)
 
     if "nurse_response_time" not in rows[0]:
-        print("Error: el CSV no tiene las columnas esperadas.")
-        print("Ejecuta la simulacion con el logger instrumentado.")
+        print("Error: CSV does not have the expected columns.")
+        print("Run the simulation with the instrumented logger.")
         sys.exit(1)
 
     bag_end = []
-    flow_dev = []
+    medium = []
+    critical = []
 
     for row in rows:
         rt = row.get("nurse_response_time", "").strip()
@@ -29,30 +30,33 @@ def main():
         alarm = row.get("responds_to_alarm", "")
         if alarm == "low_alarm":
             bag_end.append((t, val))
-        elif alarm in ("medium_alarm", "critical_alarm"):
-            flow_dev.append((t, val))
+        elif alarm == "medium_alarm":
+            medium.append((t, val))
+        elif alarm == "critical_alarm":
+            critical.append((t, val))
 
-    def mostrar(titulo, datos, alarm_label):
-        if not datos:
-            print(f"\n{titulo}: sin datos")
+    def display_stats(title, data, alarm_label):
+        if not data:
+            print(f"\n{title}: no data")
             return
-        print(f"\n{titulo}")
+        print(f"\n{title}")
         print("-" * 55)
-        print(f"{'Nro':>4s}  {'T evento':>10s}  {'T resp.':>9s}  {'Demora':>8s}")
+        print(f"{'No.':>4s}  {'Event T':>10s}  {'Resp. T':>9s}  {'Delay':>8s}")
         print("-" * 55)
-        for i, (t, v) in enumerate(datos, 1):
+        for i, (t, v) in enumerate(data, 1):
             print(f"{i:>4d}  {t - v:>8.3f}s  {t:>8.3f}s  {v:>7.3f}s")
-        vals = [v for _, v in datos]
+        vals = [v for _, v in data]
         print("-" * 55)
-        print(f"  Promedio: {sum(vals)/len(vals):.3f}s")
-        print(f"  Minimo:   {min(vals):.3f}s")
-        print(f"  Maximo:   {max(vals):.3f}s")
-        print(f"  Muestras: {len(vals)}")
+        print(f"  Average: {sum(vals)/len(vals):.3f}s")
+        print(f"  Minimum:   {min(vals):.3f}s")
+        print(f"  Maximum:   {max(vals):.3f}s")
+        print(f"  Samples: {len(vals)}")
 
-    mostrar("Tiempo de respuesta ante FIN DE BOLSA (low_alarm)", bag_end, "low_alarm")
-    mostrar("Tiempo de respuesta ante DESVIOS DE CAUDAL (medium/critical)", flow_dev, "flow_dev")
+    display_stats("Response time for BAG END (low_alarm)", bag_end, "low_alarm")
+    display_stats("Response time for MEDIUM ALARM (medium_alarm)", medium, "medium_alarm")
+    display_stats("Response time for CRITICAL ALARM (critical_alarm)", critical, "critical_alarm")
 
-    print(f"\nRango teorico (gen_nurse.py): random.uniform(5, 75) segundos")
+    print(f"\nTheoretical range (gen_nurse.py): random.uniform(5, 75) seconds")
 
 
 if __name__ == "__main__":
