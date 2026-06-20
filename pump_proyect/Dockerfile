@@ -10,7 +10,8 @@ RUN git clone https://github.com/capocchi/PythonPDEVS.git && \
     cd PythonPDEVS/src && \
     python setup.py install
 
-COPY . .
+COPY requirements.txt .
 
-# Comando por defecto para correr tu simulación automáticamente
+RUN pip install -r requirements.txt
+
 CMD ["python", "main.py"]
