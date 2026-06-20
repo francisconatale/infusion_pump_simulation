@@ -44,6 +44,7 @@ class Logger(AtomicDEVS):
         super().__init__("Logger")
         self.in_state_control = self.addInPort("in_state_control")
         self.in_alarm_module = self.addInPort("in_alarm_module")
+        self.in_nurse_confirmation = self.addInPort("in_nurse_confirmation")
 
         self.log_file = open("resultados.csv", "w", newline="", encoding="utf-8")
         self.writer = csv.writer(self.log_file)
@@ -57,7 +58,6 @@ class Logger(AtomicDEVS):
             "medical_order": 0, "actions_count": 0, "actions": "",
             "alarm_state": "no_alarm"
         }
-
         self.state = {
             "accumulated_time": 0.0
         }
@@ -77,7 +77,7 @@ class Logger(AtomicDEVS):
             self.last_data["medical_order"],
             self.last_data["actions_count"],
             self.last_data["actions"],
-            self.last_data["alarm_state"]
+            self.last_data["alarm_state"],
         ])
         self.log_file.flush()
 
@@ -106,10 +106,14 @@ class Logger(AtomicDEVS):
         if self.in_alarm_module in inputs:
             alarm_msg = inputs[self.in_alarm_module][0]
             if hasattr(alarm_msg, "value"):
-                self.last_data["alarm_state"] = alarm_msg.value
+                alarm_type = alarm_msg.value
             else:
-                self.last_data["alarm_state"] = str(alarm_msg)
+                alarm_type = str(alarm_msg)
+            self.last_data["alarm_state"] = alarm_type
             self._write_row("alarm", self.last_data["actual_flow"])
+
+        if self.in_nurse_confirmation in inputs:
+            self._write_row("nurse_confirmation", self.last_data["actual_flow"])
 
         return self.state
 

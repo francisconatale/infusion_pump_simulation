@@ -288,7 +288,7 @@ def run_verification(file_path: str):
     safety_properties = [
         ("Tolerance Count Bound (0 <= tolerance_count <= 5)", verify_tolerance_bound),
         ("Target Flow Limits (0 <= target_flow <= 200)", verify_flow_limits),
-        ("Caudal zero => flow state stays constant", caudal_zero_stop_flow),
+        ("Zero flow => flow state stays constant", caudal_zero_stop_flow),
     ]
 
     safety_stateful = [

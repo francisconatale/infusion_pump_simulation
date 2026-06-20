@@ -1,28 +1,28 @@
 import random
 
 def hours_to_minutes(hours):
-    """Convierte horas a minutos."""
+    """Converts hours to minutes."""
     return hours * 60.0
 
 def minutes_to_seconds(minutes):
-    """Convierte minutos a segundos."""
+    """Converts minutes to seconds."""
     return minutes * 60.0
 
 def hours_to_seconds(hours):
-    """Convierte horas a segundos directamente."""
+    """Converts hours to seconds directly."""
     return hours * 3600.0
 
 class RandomGenerator:
-    """Clase de utilidad para generar variables aleatorias comunes en simulaciones."""
+    """Utility class for generating common random variables in simulations."""
     
     @staticmethod
     def get_normal(mu, sigma, min_val=None, max_val=None):
         """
-        Genera un valor de una distribución Normal TRUNCADA usando rejection sampling.
-        mu: media
-        sigma: desviación estándar
-        min_val: valor mínimo permitido (opcional)
-        max_val: valor máximo permitido (opcional)
+        Generates a value from a truncated Normal distribution using rejection sampling.
+        mu: mean
+        sigma: standard deviation
+        min_val: minimum allowed value (optional)
+        max_val: maximum allowed value (optional)
         """
         while True:
             val = random.gauss(mu, sigma)
@@ -37,9 +37,9 @@ class RandomGenerator:
     @staticmethod
     def get_exponential(mean_time, min_val=0.0):
         """
-        Genera un valor de una distribución Exponencial TRUNCADA.
-        mean_time: el tiempo promedio entre eventos (1/lambda).
-        min_val: valor mínimo (por defecto 0.0 para evitar tiempos negativos)
+        Generates a value from a truncated Exponential distribution.
+        mean_time: the average time between events (1/lambda).
+        min_val: minimum value (default 0.0 to avoid negative times)
         """
         if mean_time <= 0:
             return min_val
@@ -49,6 +49,6 @@ class RandomGenerator:
 
     @staticmethod
     def get_uniform(a, b):
-        """Genera un valor aleatorio entre a y b."""
+        """Generates a random value between a and b."""
         return random.uniform(a, b)
 

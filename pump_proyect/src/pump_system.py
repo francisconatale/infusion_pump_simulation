@@ -104,10 +104,16 @@ class PumpSystem(CoupledDEVS):
             self.controller_pump.in_nurse_confirmation
         )
 
-        # ── IC: M_enf → M_alarmas (confirmación silencia alarma) ──
+        # ── IC: M_enf → M_alarmas (confirmation silences alarm) ──
         self.connectPorts(
             self.nurse_confirmation_generator.out_confirmation,
             self.alarm_module.in_nurse_confirmation
+        )
+
+        # ── IC: M_enf → M_logger (confirmacion del enfermero) ──
+        self.connectPorts(
+            self.nurse_confirmation_generator.out_confirmation,
+            self.logger.in_nurse_confirmation
         )
 
         # ── IC: M_ctrl → M_logger ──
