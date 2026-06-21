@@ -158,14 +158,14 @@ def bag_end_emits_low_alarm_and_stops_in_60s(rows: List[Dict[str, Any]]) -> List
         if "low_alarm" not in rows[i].get("actions", "") or rows[i]["bag_state"] != "normal_bag":
             continue
         t_alarm = rows[i]["time"]
-        stopped = False
+        stopped_or_confirmed = False
         for j in range(i + 1, len(rows)):
             if rows[j]["time"] - t_alarm > 60.5:
                 break
-            if "stop_pump" in rows[j].get("actions", ""):
-                stopped = True
+            if "stop_pump" in rows[j].get("actions", "") or rows[j]["event_type"] == "nurse_confirmation":
+                stopped_or_confirmed = True
                 break
-        if not stopped:
+        if not stopped_or_confirmed:
             violations.append(rows[i])
     return violations
 

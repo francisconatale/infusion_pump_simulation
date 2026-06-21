@@ -207,6 +207,8 @@ class PumpController(AtomicDEVS):
                 
         # 4. nurse confirmation (port 3)
         elif self.in_nurse_confirmation in inputs:
+            if state["bag_state"][0] in (BagState.END_BAG, BagState.AWAIT_STOP_BAG, BagState.EMPTY_BAG):
+                state["bag_state"] = (BagState.NORMAL_BAG, float('inf'))
             state["actions"] = conLog(
                 state_before,
                 [((PumpOutput.ADJUST_FLOW, state["medical_order"] - state["last_sensor_medition"]), 0.0)]

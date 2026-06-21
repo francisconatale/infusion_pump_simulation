@@ -22,6 +22,7 @@ class EndBagGenerator(AtomicDEVS):
 
         ## X
         self.in_order = self.addInPort("in_order")
+        self.in_nurse_confirmation = self.addInPort("in_nurse_confirmation")
 
         ## Y
         self.out_end_bag = self.addOutPort("out_end_bag")
@@ -34,6 +35,12 @@ class EndBagGenerator(AtomicDEVS):
 
     def extTransition(self, inputs) -> dict:
         e = self.elapsed
+
+        if self.in_nurse_confirmation in inputs:
+            if self.state["phase"] == BagState.INACTIVE:
+                self.state["phase"] = BagState.PROGRAMMED
+                self.state["hours"] = self.time_bag()
+            return self.state
 
         if self.in_order not in inputs:
             return self.state

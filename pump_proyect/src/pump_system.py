@@ -127,6 +127,12 @@ class PumpSystem(CoupledDEVS):
             self.logger.in_nurse_confirmation
         )
 
+        # ── IC: M_enf → M_bolsa (confirmacion reanuda la bolsa) ──
+        self.connectPorts(
+            self.nurse_confirmation_generator.out_confirmation,
+            self.end_bag_generator.in_nurse_confirmation
+        )
+
         # ── IC: M_ctrl → M_logger ──
         self.connectPorts(
             self.controller_pump.out_log,
