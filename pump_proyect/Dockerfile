@@ -14,4 +14,8 @@ COPY . .
 
 RUN pip install --timeout 300 -r requirements.txt -v
 
+<<<<<<< HEAD
 CMD ["python", "run_scenarios.py"]
+=======
+CMD python run_scenarios.py && python src/analysis/plotter.py
+>>>>>>> 380df2e (different scenarios with specific models)

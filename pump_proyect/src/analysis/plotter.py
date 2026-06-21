@@ -1,8 +1,7 @@
 import csv
+import os
+from pathlib import Path
 import matplotlib.pyplot as plt
-
-CSV_PATH = "resultados.csv"
-
 
 def read_csv(path):
     data = {
@@ -38,7 +37,7 @@ def read_csv(path):
 
 
 # Real flow vs objective flow vs medical order
-def plot_flow(data):
+def plot_flow(data, scenario):
     plt.figure(figsize=(16, 5))
 
     plt.plot(data["time"], data["actual_flow"], label="Actual Flow")
@@ -47,7 +46,7 @@ def plot_flow(data):
 
     plt.xlabel("Time (s)")
     plt.ylabel("Flow (ml/h)")
-    plt.title("Flow: actual vs target vs medical order")
+    plt.title(f"{scenario} - Flow: actual vs target vs medical order")
     plt.legend()
     plt.grid()
 
@@ -62,7 +61,7 @@ def encode_flow_state(states):
     return [mapping.get(s, -1) for s in states]
 
 
-def plot_flow_state(data):
+def plot_flow_state(data, scenario):
     plt.figure(figsize=(16, 5))
 
     y = encode_flow_state(data["flow_state"])
@@ -72,20 +71,20 @@ def plot_flow_state(data):
     plt.yticks([0, 1, 2], ["normal", "medium", "critical"])
     plt.xlabel("Time (s)")
     plt.ylabel("Flow state")
-    plt.title("Flow state evolution")
+    plt.title(f"{scenario} - Flow state evolution")
     plt.grid()
 
 
 
 # Tolerance counter
-def plot_tolerance(data):
+def plot_tolerance(data, scenario):
     plt.figure(figsize=(16, 5))
 
     plt.plot(data["time"], data["tolerance_count"])
 
     plt.xlabel("Time (s)")
     plt.ylabel("Tolerance count")
-    plt.title("Tolerance counter evolution")
+    plt.title(f"{scenario} - Tolerance counter evolution")
     plt.grid()
 
 
@@ -100,7 +99,7 @@ def encode_bag_state(states):
     return [mapping.get(s, -1) for s in states]
 
 
-def plot_bag_state(data):
+def plot_bag_state(data, scenario):
     plt.figure(figsize=(16, 5))
 
     y = encode_bag_state(data["bag_state"])
@@ -110,21 +109,21 @@ def plot_bag_state(data):
     plt.yticks([0, 1, 2, 3], ["normal", "low", "waiting stop", "empty"])
     plt.xlabel("Time (s)")
     plt.ylabel("Bag state")
-    plt.title("Bag state evolution")
+    plt.title(f"{scenario} - Bag state evolution")
     plt.grid()
 
 
 
 # Actions counter
 
-def plot_actions(data):
+def plot_actions(data, scenario):
     plt.figure(figsize=(16, 5))
 
     plt.plot(data["time"], data["actions_count"])
 
     plt.xlabel("Time (s)")
     plt.ylabel("Actions count")
-    plt.title("Cumulative actions triggered")
+    plt.title(f"{scenario} - Cumulative actions triggered")
     plt.grid()
 
 def encode_alarm_state(states):
@@ -143,7 +142,7 @@ def encode_alarm_state(states):
 
 ## Alarm states
 
-def plot_alarm_timeline(data):
+def plot_alarm_timeline(data, scenario):
 
     plt.figure(figsize=(18, 5))
 
@@ -184,34 +183,62 @@ def plot_alarm_timeline(data):
 
     plt.xlabel("Time (s)")
     plt.ylabel("Alarm Module State")
-    plt.title("Alarm Evolution and Nurse Confirmations")
+    plt.title(f"{scenario} - Alarm Evolution and Nurse Confirmations")
 
     plt.grid()
 
+# generation of every plot for a csv
+def generate_plots(csv_file):
 
-# main for every plot
-def main():
-    data = read_csv(CSV_PATH)
+    scenario = Path(csv_file).stem
 
-    plot_flow(data)
-    plt.savefig("docs/flujo.png")
-    
-    plot_flow_state(data)
-    plt.savefig("docs/estado_de_flujo.png")
-    
-    plot_tolerance(data)
-    plt.savefig("docs/tolerancia.png")
-    
-    plot_bag_state(data)
-    plt.savefig("docs/fin_de_bolsa.png")
-    
-    plot_actions(data)
-    plt.savefig("docs/acciones.png")
-    
-    plot_alarm_timeline(data)
-    plt.savefig("docs/alarmas.png")
+    output_dir = Path("docs") / "plots" / scenario
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    data = read_csv(csv_file)
+
+    plot_flow(data, scenario)
+    plt.savefig(output_dir / "flujo.png")
     plt.close()
 
+    plot_flow_state(data, scenario)
+    plt.savefig(output_dir / "estado_de_flujo.png")
+    plt.close()
+
+    plot_tolerance(data, scenario)
+    plt.savefig(output_dir / "tolerancia.png")
+    plt.close()
+
+    plot_bag_state(data, scenario)
+    plt.savefig(output_dir / "fin_de_bolsa.png")
+    plt.close()
+
+    plot_actions(data, scenario)
+    plt.savefig(output_dir / "acciones.png")
+    plt.close()
+
+    plot_alarm_timeline(data, scenario)
+    plt.savefig(output_dir / "alarmas.png")
+    plt.close()
+
+    print(f"Plots generated for {scenario}")
+
+# generation of ALL plots 
+def main():
+
+    docs_dir = Path("docs")
+
+    csv_files = sorted(
+        docs_dir.glob("*.csv")
+    )
+
+    if not csv_files:
+        print("No CSV files found in docs/")
+        return
+
+    for csv_file in csv_files:
+        print(f"Processing {csv_file}")
+        generate_plots(csv_file)
     
 
 if __name__ == "__main__":

@@ -1,28 +1,23 @@
 import shutil
 
 from pypdevs.simulator import Simulator
+from src.pump_system import PumpSystem
 
-from scenarios.scenario_normal import build_model as normal
-from scenarios.scenario_order_change import build_model as order_change
-from scenarios.scenario_stop_order import build_model as stop_order
-
-SCENARIOS = {
-    "normal": normal,
-    "order_change": order_change,
-    "stop_order": stop_order,
-}
-
+SCENARIOS = ["normal",
+    "order_change",
+    "stop_order"]
+    
 def run():
-    for scenario_name, builder in SCENARIOS.items():
-        model = builder()
+    for scenario in SCENARIOS:
+        model = PumpSystem(0.95, scenario)
 
         sim = Simulator(model)
-        sim.setTerminationTime(1000)
+        sim.setTerminationTime(10000)
         sim.simulate()
 
         shutil.move(
             "resultados.csv",
-            f"docs/{scenario_name}.csv"
+            f"docs/{scenario}.csv"
         )
 
 if __name__ == "__main__":

@@ -1,4 +1,7 @@
+from math import inf
+
 from pypdevs.DEVS import CoupledDEVS
+
 from src.models.gen_bag_end import EndBagGenerator
 from src.models.controller_pump import PumpController
 from src.models.gen_nurse import GeneratorNurseConfirmation
@@ -8,47 +11,113 @@ from src.models.actuator_pump import ActuatorPump
 from src.models.alarm_module import AlarmModule
 from src.models.logger import Logger
 
+from src.specific_models.gen_specific_medical_order import (
+    ScenarioMedicalOrderGenerator
+)
+from src.specific_models.specific_actuator_pump import (
+    ScenarioDeviationPump
+)
+from src.specific_models.gen_specific_end_bag import (
+    SpecificBagGenerator
+)
+from src.specific_models.gen_specific_nurse import (
+    SpecificNurseConfirmation
+)
+
 
 class PumpSystem(CoupledDEVS):
-    def __init__(self, client_criticality, medical_order_generator_kwargs=None,
-    bag_generator_kwargs=None,
-    nurse_generator_kwargs=None):
+
+    def __init__(self, client_criticality, scenario="normal"):
         super().__init__("PumpSystem")
 
-        medical_order_generator_kwargs = \
-            medical_order_generator_kwargs or {}
-
-        bag_generator_kwargs = \
-            bag_generator_kwargs or {}
-
-        nurse_generator_kwargs = \
-            nurse_generator_kwargs or {}
-            
         self.client_criticality = client_criticality
 
+        self._create_scenario_models(scenario)
+        self._create_core_models()
+        self._create_connections()
+
+    # ------------------------------------------------------------------
+    # SCENARIOS
+    # ------------------------------------------------------------------
+
+    def _create_scenario_models(self, scenario):
+
+        # Defaults
+        medical_order = MedicalOrderGenerator(self.client_criticality)
+        actuator = ActuatorPump()
+        end_bag = EndBagGenerator()
+        nurse = GeneratorNurseConfirmation()
+
+        if scenario == "order_change":
+            medical_order = ScenarioMedicalOrderGenerator([
+                (0, 50),
+                (100, 80)
+            ])
+
+        elif scenario == "stop_order":
+            medical_order = ScenarioMedicalOrderGenerator([
+                (0, 50),
+                (100, 0)
+            ])
+
+        elif scenario == "mild_deviation":
+            actuator = ScenarioDeviationPump(
+                deviation_factor=0.92,
+                duration=20
+            )
+
+        elif scenario == "critical_deviation":
+            actuator = ScenarioDeviationPump(
+                deviation_factor=0.70,
+                duration=inf
+            )
+
+            nurse = SpecificNurseConfirmation(
+                confirmation_time=60
+            )
+
+        elif scenario == "end_bag":
+            end_bag = SpecificBagGenerator(
+                end_bag_time=100
+            )
+
+            nurse = SpecificNurseConfirmation(
+                confirmation_time=5
+            )
+
+        elif scenario == "no_confirmation":
+            nurse = SpecificNurseConfirmation(
+                confirmation_time=inf
+            )
+
         self.medical_order_generator = self.addSubModel(
-            MedicalOrderGenerator(client_criticality,
-            **medical_order_generator_kwargs)
+            medical_order
+        )
+
+        self.actuator_pump = self.addSubModel(
+            actuator
         )
 
         self.end_bag_generator = self.addSubModel(
-            EndBagGenerator(**bag_generator_kwargs)
+            end_bag
         )
+
+        self.nurse_confirmation_generator = self.addSubModel(
+            nurse
+        )
+
+    # ------------------------------------------------------------------
+    # COMMON MODELS
+    # ------------------------------------------------------------------
+
+    def _create_core_models(self):
 
         self.controller_pump = self.addSubModel(
             PumpController()
         )
 
-        self.actuator_pump = self.addSubModel(
-            ActuatorPump()
-        )
-
         self.sensor_flow = self.addSubModel(
             SensorFlow()
-        )
-
-        self.nurse_confirmation_generator = self.addSubModel(
-            GeneratorNurseConfirmation(**nurse_generator_kwargs)
         )
 
         self.alarm_module = self.addSubModel(
@@ -59,94 +128,106 @@ class PumpSystem(CoupledDEVS):
             Logger()
         )
 
-        # Puerto de salida externo (EOC): M_alarmas → N
-        self.out_alarm = self.addOutPort("out_alarm")
+        self.out_alarm = self.addOutPort(
+            "out_alarm"
+        )
 
-        # ── IC: M_gen → M_ctrl ──
+    # ------------------------------------------------------------------
+    # CONNECTIONS
+    # ------------------------------------------------------------------
+
+    def _create_connections(self):
+
+        # Medical order -> controller
         self.connectPorts(
             self.medical_order_generator.out_medical_order,
             self.controller_pump.in_medical_order
         )
 
-        # ── IC: M_gen → M_bolsa ──
+        # Medical order -> bag generator
         self.connectPorts(
             self.medical_order_generator.out_medical_order,
             self.end_bag_generator.in_order
         )
 
-        # ── IC: M_bolsa → M_ctrl ──
+        # End bag -> controller
         self.connectPorts(
             self.end_bag_generator.out_end_bag,
             self.controller_pump.in_end_bag
         )
 
-        # ── IC: M_ctrl → M_bomba (lazo de control) ──
+        # Controller -> actuator
         self.connectPorts(
             self.controller_pump.out_flow,
             self.actuator_pump.in_controller
         )
 
-        # ── IC: M_bomba → M_sensor (lazo de control) ──
+        # Actuator -> sensor
         self.connectPorts(
             self.actuator_pump.out_sensor_flow,
             self.sensor_flow.in_actuator
         )
 
-        # ── IC: M_sensor → M_ctrl (lazo de control) ──
+        # Sensor -> controller
         self.connectPorts(
             self.sensor_flow.out_flow_measurement,
             self.controller_pump.in_sensor_flow
         )
 
-        # ── IC: M_ctrl → M_alarmas ──
+        # Controller -> alarm module
         self.connectPorts(
             self.controller_pump.out_alarm,
             self.alarm_module.in_alarm
         )
 
-        # ── IC: M_alarmas → M_enf ──
+        # Alarm -> nurse
         self.connectPorts(
             self.alarm_module.out_alarm,
             self.nurse_confirmation_generator.in_alarm
         )
 
-        # ── IC: M_enf → M_ctrl ──
+        # Nurse -> controller
         self.connectPorts(
             self.nurse_confirmation_generator.out_confirmation,
             self.controller_pump.in_nurse_confirmation
         )
 
-        # ── IC: M_enf → M_alarmas (confirmation silences alarm) ──
+        # Nurse -> alarm module
         self.connectPorts(
             self.nurse_confirmation_generator.out_confirmation,
             self.alarm_module.in_nurse_confirmation
         )
 
-        # ── IC: M_enf → M_logger (confirmacion del enfermero) ──
+        # Nurse -> logger
         self.connectPorts(
             self.nurse_confirmation_generator.out_confirmation,
             self.logger.in_nurse_confirmation
         )
 
-        # ── IC: M_ctrl → M_logger ──
+        # Controller -> logger
         self.connectPorts(
             self.controller_pump.out_log,
             self.logger.in_state_control
         )
 
-        # ── IC: M_alarmas → M_logger ──
+        # Alarm -> logger
         self.connectPorts(
             self.alarm_module.out_alarm,
             self.logger.in_alarm_module
         )
 
-        # ── EOC: M_alarmas → N ──
+        # External output
         self.connectPorts(
             self.alarm_module.out_alarm,
             self.out_alarm
         )
 
+    # ------------------------------------------------------------------
+    # SELECT
+    # ------------------------------------------------------------------
+
     def select(self, imm_children):
+
         order = {
             MedicalOrderGenerator: 0,
             PumpController: 1,
@@ -157,5 +238,8 @@ class PumpSystem(CoupledDEVS):
             AlarmModule: 6,
             Logger: 7,
         }
-        return min(imm_children, key=lambda x: order.get(type(x), 99))
-        
+
+        return min(
+            imm_children,
+            key=lambda x: order.get(type(x), 99)
+        )
