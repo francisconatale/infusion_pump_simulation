@@ -42,10 +42,16 @@ def verify_flow_limits(row: Dict[str, Any]) -> bool:
     return 0.0 <= val <= 200.0
 
 def caudal_zero_stop_flow(actual: Dict[str, Any], next_row: Dict[str, Any]) -> bool:
-    target_actual, actual_flow = actual["target_flow"], actual["flow_state"]
-    next_target, actual_target = next_row["target_flow"], next_row["flow_state"]
+    target_actual = actual["target_flow"]
     if target_actual == 0.0:
-        return actual_flow == actual_target
+        # Si la tolerancia ya estaba al límite, puede cambiar de estado para emitir alarma
+        if actual["tolerance_count"] >= 5:
+            return True
+        # Si el enfermero confirma, el estado vuelve a normal_flow
+        if next_row["event_type"] == "nurse_confirmation":
+            return True
+            
+        return actual["flow_state"] == next_row["flow_state"]
     return True
 
 def verify_no_resume_after_critical_alarm(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -109,6 +115,8 @@ def after_five_seconds_tolerancy_emits_medium_alert(rows: List[Dict[str, Any]]) 
 def medical_order_produces_action(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     violations = []
     for i in range(len(rows) - 1):
+        if rows[i]["flow_state"] == "critical_flow":
+            continue
         curr_mo = rows[i]["medical_order"]
         next_mo = rows[i + 1]["medical_order"]
         if curr_mo == next_mo:
@@ -126,6 +134,8 @@ def medical_order_produces_action(rows: List[Dict[str, Any]]) -> List[Dict[str, 
 def infusion_starts_under_3s(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     violations = []
     for i in range(len(rows) - 1):
+        if rows[i]["flow_state"] == "critical_flow":
+            continue
         prev_mo = rows[i]["medical_order"]
         curr_mo = rows[i + 1]["medical_order"]
         if prev_mo == curr_mo or curr_mo <= 0:
@@ -334,5 +344,5 @@ def run_verification(file_path: str):
         sys.exit(1)
 
 if __name__ == "__main__":
-    csv_file = "resultados.csv"
+    csv_file = sys.argv[1] if len(sys.argv) > 1 else "resultados.csv"
     run_verification(csv_file)

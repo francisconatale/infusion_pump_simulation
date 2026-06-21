@@ -130,18 +130,23 @@ class PumpController(AtomicDEVS):
         if self.in_medical_order in inputs:
             _, c = inputs[self.in_medical_order][0]
             
-            if c > 0:
-                delay = random.uniform(0.0, 3.0)
-                state["actions"] = conLog(
-                    state_before,
-                    [((PumpOutput.ADJUST_FLOW, c - state["last_sensor_medition"]), delay)]
-                )
+            if state["flow_state"][0] == FlowState.CRITICAL_FLOW:
+                # Si hay alarma critica, la bomba esta bloqueada.
+                # Solo registramos la orden pero no iniciamos el flujo.
+                state["medical_order"] = c
             else:
-                state["actions"] = conLog(
-                    state_before,
-                    [(PumpOutput.STOP_PUMP, 0.0)]
-                )
-            state["medical_order"] = c
+                if c > 0:
+                    delay = random.uniform(0.0, 3.0)
+                    state["actions"] = conLog(
+                        state_before,
+                        [((PumpOutput.ADJUST_FLOW, c - state["last_sensor_medition"]), delay)]
+                    )
+                else:
+                    state["actions"] = conLog(
+                        state_before,
+                        [(PumpOutput.STOP_PUMP, 0.0)]
+                    )
+                state["medical_order"] = c
             
         # 2. sensor flow (port 1)
         elif self.in_sensor_flow in inputs:

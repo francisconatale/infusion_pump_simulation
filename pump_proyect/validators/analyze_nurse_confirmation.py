@@ -4,12 +4,12 @@ import sys
 
 CSV_PATH = "resultados.csv"
 
-def main():
+def main(csv_path):
     try:
-        with open(CSV_PATH) as f:
+        with open(csv_path) as f:
             rows = list(csv.DictReader(f))
     except FileNotFoundError:
-        print(f"Error: {CSV_PATH} not found")
+        print(f"Error: {csv_path} not found")
         sys.exit(1)
 
     # Reconstruct response times from raw alarm + confirmation events
@@ -63,4 +63,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    path = sys.argv[1] if len(sys.argv) > 1 else "resultados.csv"
+    main(path)

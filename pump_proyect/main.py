@@ -1,25 +1,77 @@
+import os
 from pypdevs.simulator import Simulator
 
 from src.pump_system import PumpSystem
-from src.utils.initial_states_factory import InitialStatesFactory
+from src.scenarios.initial_states_factory import InitialStatesFactory
 
 
-def main():
-    client_criticality = 0.95
+class Scenario:
+    def __init__(self, name: str, initial_state_name: str, duration: float, client_criticality: float):
+        self.name = name
+        self.initial_state_name = initial_state_name
+        self.duration = duration
+        self.client_criticality = client_criticality
 
-    # Obtener el estado inicial para el escenario deseado desde la factory.
-    # Escenarios disponibles: "default", "alarma_critica", "tolerancia_excedida"
-    scenario_name = "default"
-    initial_states = InitialStatesFactory.get_initial_state(scenario_name)
+
+def run_scenario(scenario: Scenario):
+    print(f"\n{'='*50}")
+    print(f"Iniciando escenario: {scenario.name}")
+    print(f"Duracion: {scenario.duration} | Criticidad: {scenario.client_criticality}")
+    print(f"{'='*50}")
+
+    initial_states = InitialStatesFactory.get_initial_state(scenario.initial_state_name)
+    
+    # Creamos el directorio para este escenario
+    output_dir = f"resultados/{scenario.name}"
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Asignamos el log dentro de esa carpeta
+    initial_states["logger"]["log_filename"] = f"{output_dir}/resultados.csv"
 
     model = PumpSystem(
-        client_criticality=client_criticality,
+        client_criticality=scenario.client_criticality,
         initial_states=initial_states
     )
 
     sim = Simulator(model)
-    sim.setTerminationTime(100000)
+    sim.setTerminationTime(scenario.duration)
     sim.simulate()
+    
+    print(f"Escenario '{scenario.name}' finalizado.\n")
+
+
+def main():
+    scenarios = [
+        Scenario(
+            name="flujo_normal_corto",
+            initial_state_name="default",
+            duration=1000,
+            client_criticality=0.95
+        ),
+        Scenario(
+            name="paciente_critico_alarma",
+            initial_state_name="alarma_critica",
+            duration=500,
+            client_criticality=0.99
+        ),
+        Scenario(
+            name="falla_tolerancia",
+            initial_state_name="tolerancia_excedida",
+            duration=2000,
+            client_criticality=0.80
+        ),
+        Scenario(
+            name="flujo_normal_10_horas",
+            initial_state_name="default",
+            duration=36000,
+            client_criticality=0.95
+        )
+    ]
+
+    for scenario in scenarios:
+        run_scenario(scenario)
+
 
 if __name__ == "__main__":
     main()
+

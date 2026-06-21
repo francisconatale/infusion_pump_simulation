@@ -53,8 +53,8 @@ class Logger(AtomicDEVS):
 
         if initial_last_data is None:
             self.last_data = {
-                "flow_state": "NORMAL_FLOW", "tolerance_count": 0,
-                "bag_state": "NORMAL_BAG", "bag_time": infinity,
+                "flow_state": "normal_flow", "tolerance_count": 0,
+                "bag_state": "normal_bag", "bag_time": infinity,
                 "actual_flow": 0.0, "target_flow": 0.0,
                 "medical_order": 0, "actions_count": 0, "actions": "",
                 "alarm_state": "no_alarm"
@@ -117,6 +117,7 @@ class Logger(AtomicDEVS):
             self._write_row("alarm", self.last_data["actual_flow"])
 
         if self.in_nurse_confirmation in inputs:
+            self.last_data["alarm_state"] = "no_alarm"
             self._write_row("nurse_confirmation", self.last_data["actual_flow"])
 
         return self.state

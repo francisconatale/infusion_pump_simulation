@@ -1,0 +1,26 @@
+
+Response time for BAG END (low_alarm): no data
+
+Response time for MEDIUM ALARM (medium_alarm)
+-------------------------------------------------------
+ No.     Alarm T    Resp. T     Delay
+-------------------------------------------------------
+   1    23.683s    72.956s   49.273s
+-------------------------------------------------------
+  Average: 49.273s
+  Minimum:   49.273s
+  Maximum:   49.273s
+  Samples: 1
+
+Response time for CRITICAL ALARM (critical_alarm)
+-------------------------------------------------------
+ No.     Alarm T    Resp. T     Delay
+-------------------------------------------------------
+   1     0.000s    16.670s   16.670s
+-------------------------------------------------------
+  Average: 16.670s
+  Minimum:   16.670s
+  Maximum:   16.670s
+  Samples: 1
+
+Theoretical range (gen_nurse.py): random.uniform(5, 75) seconds

@@ -189,28 +189,59 @@ def plot_alarm_timeline(data):
     plt.grid()
 
 
+import glob
+import os
+import subprocess
+
 # main for every plot
 def main():
-    data = read_csv(CSV_PATH)
+    csv_files = glob.glob("resultados/*/resultados.csv")
+    
+    if not csv_files:
+        print("No se encontraron carpetas de escenarios con resultados.csv.")
+        return
 
-    plot_flow(data)
-    plt.savefig("docs/flujo.png")
-    
-    plot_flow_state(data)
-    plt.savefig("docs/estado_de_flujo.png")
-    
-    plot_tolerance(data)
-    plt.savefig("docs/tolerancia.png")
-    
-    plot_bag_state(data)
-    plt.savefig("docs/fin_de_bolsa.png")
-    
-    plot_actions(data)
-    plt.savefig("docs/acciones.png")
-    
-    plot_alarm_timeline(data)
-    plt.savefig("docs/alarmas.png")
-    plt.close()
+    for csv_file in csv_files:
+        # csv_file es del formato "resultados/nombre_escenario/resultados.csv"
+        # El output dir es simplemente el directorio donde esta el csv
+        output_dir = os.path.dirname(csv_file)
+        scenario_name = os.path.basename(output_dir)
+        
+        data = read_csv(csv_file)
+
+        plot_flow(data)
+        plt.savefig(f"{output_dir}/flujo.png")
+        plt.close()
+        
+        plot_flow_state(data)
+        plt.savefig(f"{output_dir}/estado_de_flujo.png")
+        plt.close()
+        
+        plot_tolerance(data)
+        plt.savefig(f"{output_dir}/tolerancia.png")
+        plt.close()
+        
+        plot_bag_state(data)
+        plt.savefig(f"{output_dir}/fin_de_bolsa.png")
+        plt.close()
+        
+        plot_actions(data)
+        plt.savefig(f"{output_dir}/acciones.png")
+        plt.close()
+        
+        plot_alarm_timeline(data)
+        plt.savefig(f"{output_dir}/alarmas.png")
+        plt.close()
+
+        print(f"Graficos generados para el escenario '{scenario_name}' en: {output_dir}")
+
+        print(f"Corriendo validadores para '{scenario_name}'...")
+        
+        with open(f"{output_dir}/verify_properties_output.txt", "w") as f:
+            subprocess.run(["python", "validators/verify_properties.py", csv_file], stdout=f, stderr=subprocess.STDOUT)
+            
+        with open(f"{output_dir}/analyze_nurse_confirmation_output.txt", "w") as f:
+            subprocess.run(["python", "validators/analyze_nurse_confirmation.py", csv_file], stdout=f, stderr=subprocess.STDOUT)
 
     
 
