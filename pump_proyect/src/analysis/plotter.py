@@ -93,9 +93,9 @@ def plot_tolerance(data):
 def encode_bag_state(states):
     mapping = {
         "normal_bag": 0,
-        "bag_low": 1,
-        "waiting_stop": 2,
-        "empty": 3
+        "end_bag": 1,
+        "await_stop_bag": 2,
+        "empty_bag": 3
     }
     return [mapping.get(s, -1) for s in states]
 
