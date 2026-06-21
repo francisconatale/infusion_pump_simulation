@@ -9,16 +9,16 @@ El mecanismo de salida se basa en una \textbf{cola de acciones pendientes} $\mat
 \paragraph{Puertos.}
 \begin{align*}
   X &= \{\mathrm{ordenMedica}\}\!\times\!\{0\}
-        \;\cup\; \{\mathrm{sensorFlujo}\}\!\times\!\{1\}
-        \;\cup\; \{\mathrm{finBolsa}\}\!\times\!\{2\}
+        \;\cup\; \{\mathrm{sensorFlujo}\}\!\times\!\{1\} \\
+    &\quad \cup\; \{\mathrm{finBolsa}\}\!\times\!\{2\}
         \;\cup\; \{\mathrm{confirmacionEnfermero}\}\!\times\!\{3\}
   \\[4pt]
   Y &= \{\mathrm{alarmaBaja},\mathrm{alarmaMedia},\mathrm{alarmaCritica}\}
-            \!\times\!\{0\}
-        \;\cup\;
+            \!\times\!\{0\} \\
+    &\quad \cup\;
         \{\mathrm{ajustarCaudal},\mathrm{detenerBomba},\mathrm{registrarEvento}\}
-            \!\times\!\{1\}
-        \;\cup\;
+            \!\times\!\{1\} \\
+    &\quad \cup\;
         \{\mathrm{registrarEvento}\}\!\times\!\{9\}
 \end{align*}
 
@@ -30,8 +30,8 @@ El mecanismo de salida se basa en una \textbf{cola de acciones pendientes} $\mat
      \times
      \underbrace{\mathbb{N}_0}_{\mathit{tol}}
      \times
-     \underbrace{E_{\mathrm{flujo}}}_{\mathit{est}_{\mathrm{flujo}}}
-     \times
+     \underbrace{E_{\mathrm{flujo}}}_{\mathit{est}_{\mathrm{flujo}}} \\
+    &\quad \times
      \underbrace{E_{\mathrm{bolsa}}}_{\mathit{est}_{\mathrm{bolsa}}}
      \times
      \underbrace{\bigl(\mathbb{R}_0^+ \cup \{\infty\}\bigr)}_{\tau_{\mathrm{bolsa}}}
@@ -46,14 +46,12 @@ donde los dominios discretos se definen como:
 \end{align*}
 
 y el conjunto de acciones etiquetadas posibles es:
-\[
-  A^* = \{\mathrm{alarmaBaja},\,\mathrm{alarmaMedia},\,\mathrm{alarmaCritica},\,
-        \mathrm{detenerBomba},\,\mathrm{registrarEvento}\}
-        \;\cup\;
-        \{(\mathrm{ajustarCaudal},\, \Delta) \mid \Delta \in \mathbb{R}\}
-        \;\cup\;
-        \{(\mathrm{registrarEvento},\, s) \mid s \in S\}
-\]
+\begin{align*}
+  A^* &= \{\mathrm{alarmaBaja},\,\mathrm{alarmaMedia},\,\mathrm{alarmaCritica},\,
+        \mathrm{detenerBomba},\,\mathrm{registrarEvento}\} \\
+      &\quad \cup\; \{(\mathrm{ajustarCaudal},\, \Delta) \mid \Delta \in \mathbb{R}\} \\
+      &\quad \cup\; \{(\mathrm{registrarEvento},\, s) \mid s \in S\}
+\end{align*}
 
 \paragraph{Roles funcionales de cada variable.}
 
@@ -114,13 +112,15 @@ $\mathit{acciones}$     & $(A^* \times \mathbb{R}_{\ge 0})^*$ & Cola de salidas 
 \[
 \delta_{\mathrm{ext}}(s,\,e,\,((c,t),0)) =
 \begin{cases}
-  \bigl(uCM,\;c,\;0,\;\mathrm{normal},\;\mathrm{llena},\;\infty,\;
-    \mathrm{conLog}(s,\,[((\mathrm{ajustarCaudal},\,c - uCM),\;
-    \mathrm{random}(0,3))])\bigr)
-  & \text{si } est_{\mathrm{bolsa}} = \mathrm{vacia} \land c > 0 \\[4pt]
-  \bigl(uCM,\;0,\;tol,\;est_{\mathrm{flujo}},\;est_{\mathrm{bolsa}},\;
-    \tau_{\mathrm{bolsa}}-e,\;
-    \mathrm{conLog}(s,\,[(\mathrm{detenerBomba},\,0)])\bigr)
+  \begin{aligned}
+    \bigl(&uCM,\;c,\;0,\;\mathrm{normal},\;\mathrm{llena},\;\infty,\; \\
+          &\mathrm{conLog}(s,\,[((\mathrm{ajustarCaudal},\,c - uCM),\; \mathrm{random}(0,3))])\bigr)
+  \end{aligned}
+  & \text{si } est_{\mathrm{bolsa}} = \mathrm{vacia} \land c > 0 \\[3ex]
+  \begin{aligned}
+    \bigl(&uCM,\;0,\;tol,\;est_{\mathrm{flujo}},\;est_{\mathrm{bolsa}},\; \tau_{\mathrm{bolsa}}-e,\; \\
+          &\mathrm{conLog}(s,\,[(\mathrm{detenerBomba},\,0)])\bigr)
+  \end{aligned}
   & \text{si } est_{\mathrm{bolsa}} = \mathrm{vacia} \land c = 0
 \end{cases}
 \]
@@ -130,24 +130,23 @@ $\mathit{acciones}$     & $(A^* \times \mathbb{R}_{\ge 0})^*$ & Cola de salidas 
 Transición externa — orden médica en estado crítico ($est_{\mathrm{flujo}} = \mathrm{estadoCritico}$):
 \begin{align*}
   \delta_{\mathrm{ext}}(s,\,e,\,((c,t),0))
-  = \bigl(&uCM,\;c,\;tol,\;\mathrm{estadoCritico},\;est_{\mathrm{bolsa}},\;
-           \tau_{\mathrm{bolsa}}-e,\;
-           []\bigr)
+  &= \bigl(uCM,\;c,\;tol,\;\mathrm{estadoCritico},\;est_{\mathrm{bolsa}},\;
+           \tau_{\mathrm{bolsa}}-e,\; []\bigr)
 \end{align*}
 
 Transición externa — orden médica con $c > 0$:
 \begin{align*}
   \delta_{\mathrm{ext}}(s,\,e,\,((c,t),0))
-  = \bigl(&uCM,\;c,\;tol,\;est_{\mathrm{flujo}},\;est_{\mathrm{bolsa}},\;
+  &= \bigl(uCM,\;c,\;tol,\;est_{\mathrm{flujo}},\;est_{\mathrm{bolsa}},\;
            \tau_{\mathrm{bolsa}}-e, \\
-          &\mathrm{conLog}(s,\,[((\mathrm{ajustarCaudal},\, c - uCM),\;
+  &\qquad \mathrm{conLog}(s,\,[((\mathrm{ajustarCaudal},\, c - uCM),\;
              \mathrm{random\_truncado}(0.3) \times 10)])\bigr)
 \end{align*}
 
 Transición externa — orden médica con $c = 0$:
 \begin{align*}
   \delta_{\mathrm{ext}}(s,\,e,\,((0,t),0))
-  = \bigl(&uCM,\;0,\;tol,\;est_{\mathrm{flujo}},\;est_{\mathrm{bolsa}},\;
+  &= \bigl(uCM,\;0,\;tol,\;est_{\mathrm{flujo}},\;est_{\mathrm{bolsa}},\;
            \tau_{\mathrm{bolsa}}-e,\;
            \mathrm{conLog}(s,\,[(\mathrm{detenerBomba},\;0)])\bigr)
 \end{align*}
@@ -157,21 +156,31 @@ Sea $\tau' = \tau_{\mathrm{bolsa}} - e$:
 \[
   \delta_{\mathrm{ext}}(s,\,e,\,(x,1)) =
   \begin{cases}
-    \bigl(x,\,cO,\,0,\,\mathrm{estadoCritico},\,est_{\mathrm{bolsa}},\,\tau',\,
-      \mathrm{conLog}(s,\,[(\mathrm{alarmaCritica},0),\,(\mathrm{detenerBomba},0)])\bigr)
-    \\ \quad \text{si } tol \ge 5 \land est_{\mathrm{flujo}} = \mathrm{estadoMedio}
-    \\[2ex]
-    \bigl(x,\,cO,\,0,\,\mathrm{estadoMedio},\,est_{\mathrm{bolsa}},\,\tau',\,
-      \mathrm{conLog}(s,\,[(\mathrm{alarmaMedia},0)])\bigr)
-    \\ \quad \text{si } tol \ge 5 \land est_{\mathrm{flujo}} = \mathrm{normal}
-    \\[2ex]
-    \bigl(x,\,cO,\,tol+1,\,est_{\mathrm{flujo}},\,est_{\mathrm{bolsa}},\,\tau',\,
-      \mathrm{conLog}(s,\,[((\mathrm{ajustarCaudal},\,cO - x),\,0),\,((\mathrm{registrarEvento},\,\mathrm{snapshot}),\,0)])\bigr)
-    \\ \quad \text{si } \mathrm{no\_tolerable}(cO,\,x) \land tol < 5
-    \\[2ex]
-    \bigl(x,\,cO,\,0,\,est_{\mathrm{flujo}},\,est_{\mathrm{bolsa}},\,\tau',\,
-      \mathrm{conLog}(s,\,[((\mathrm{ajustarCaudal},\,cO - x),\,0),\,((\mathrm{registrarEvento},\,\mathrm{snapshot}),\,0)])\bigr)
-    \\ \quad \text{en otro caso}
+    \begin{aligned}
+      \bigl(&x,\,cO,\,0,\,\mathrm{estadoCritico},\,est_{\mathrm{bolsa}},\,\tau',\, \\
+            &\mathrm{conLog}(s,\,[(\mathrm{alarmaCritica},0),\,(\mathrm{detenerBomba},0)])\bigr)
+    \end{aligned}
+    & \text{si } tol \ge 5 \land est_{\mathrm{flujo}} = \mathrm{estadoMedio}
+    \\[3ex]
+    \begin{aligned}
+      \bigl(&x,\,cO,\,0,\,\mathrm{estadoMedio},\,est_{\mathrm{bolsa}},\,\tau',\, \\
+            &\mathrm{conLog}(s,\,[(\mathrm{alarmaMedia},0)])\bigr)
+    \end{aligned}
+    & \text{si } tol \ge 5 \land est_{\mathrm{flujo}} = \mathrm{normal}
+    \\[3ex]
+    \begin{aligned}
+      \bigl(&x,\,cO,\,tol+1,\,est_{\mathrm{flujo}},\,est_{\mathrm{bolsa}},\,\tau',\, \\
+            &\mathrm{conLog}(s,\,[((\mathrm{ajustarCaudal},\,cO - x),\,0), \\
+            &\qquad\qquad ((\mathrm{registrarEvento},\,\mathrm{snapshot}),\,0)])\bigr)
+    \end{aligned}
+    & \text{si } \mathrm{no\_tolerable}(cO,\,x) \land tol < 5
+    \\[3ex]
+    \begin{aligned}
+      \bigl(&x,\,cO,\,0,\,est_{\mathrm{flujo}},\,est_{\mathrm{bolsa}},\,\tau',\, \\
+            &\mathrm{conLog}(s,\,[((\mathrm{ajustarCaudal},\,cO - x),\,0), \\
+            &\qquad\qquad ((\mathrm{registrarEvento},\,\mathrm{snapshot}),\,0)])\bigr)
+    \end{aligned}
+    & \text{en otro caso}
   \end{cases}
 \]
 
@@ -179,15 +188,18 @@ Transición externa — confirmación del enfermero:
 \[
   \delta_{\mathrm{ext}}(s,\,e,\,(\mathrm{confirmacionEnfermero},3)) =
   \begin{cases}
-    \bigl(uCM,\;cO,\;0,\;\mathrm{normal},\;\mathrm{llena},\;\infty,\;
-      \mathrm{conLog}(s,\,[((\mathrm{ajustarCaudal},\,cO-uCM),\;0)])\bigr)
-    \\ \quad \text{si } est_{\mathrm{bolsa}} \in
+    \begin{aligned}
+      \bigl(&uCM,\;cO,\;0,\;\mathrm{normal},\;\mathrm{llena},\;\infty,\; \\
+            &\mathrm{conLog}(s,\,[((\mathrm{ajustarCaudal},\,cO-uCM),\;0)])\bigr)
+    \end{aligned}
+    & \text{si } est_{\mathrm{bolsa}} \in
       \{\mathrm{bolsaBaja},\,\mathrm{esperandoDetencion},\,\mathrm{vacia}\}
-    \\[2ex]
-    \bigl(uCM,\;cO,\;0,\;\mathrm{normal},\;est_{\mathrm{bolsa}},\;
-      \tau_{\mathrm{bolsa}}-e,\;
-      \mathrm{conLog}(s,\,[((\mathrm{ajustarCaudal},\,cO-uCM),\;0)])\bigr)
-    \\ \quad \text{en otro caso}
+    \\[3ex]
+    \begin{aligned}
+      \bigl(&uCM,\;cO,\;0,\;\mathrm{normal},\;est_{\mathrm{bolsa}},\;\tau_{\mathrm{bolsa}}-e,\; \\
+            &\mathrm{conLog}(s,\,[((\mathrm{ajustarCaudal},\,cO-uCM),\;0)])\bigr)
+    \end{aligned}
+    & \text{en otro caso}
   \end{cases}
 \]
 
@@ -196,40 +208,37 @@ Transición externa — señal de fin de bolsa:
 \[
   \delta_{\mathrm{ext}}(s,\,e,\,(\mathrm{finBolsa},2)) =
   \begin{cases}
-    \bigl(uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,\mathrm{bolsaBaja},\,
-      \tau_{\mathrm{bolsa}}-e,\,
-      \mathrm{conLog}(s,\,[(\mathrm{alarmaBaja},\;0)])\bigr)
-    \\ \quad \text{si } est_{\mathrm{bolsa}} = \mathrm{llena}
-    \\[2ex]
-    \bigl(uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,est_{\mathrm{bolsa}},\;
-      \tau_{\mathrm{bolsa}}-e,\;
-      [(a_1,\,\max(0,d_1-e)),\,(a_2,d_2),\ldots]\bigr)
-    \\ \quad \text{si } est_{\mathrm{bolsa}} \in
-      \{\mathrm{bolsaBaja},\,\mathrm{esperandoDetencion},\,\mathrm{vacia}\}
-      \land \mathit{acciones} = [(a_1,d_1),(a_2,d_2),\ldots]
+    \begin{aligned}
+      \bigl(&uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,\mathrm{bolsaBaja},\,\tau_{\mathrm{bolsa}}-e,\, \\
+            &\mathrm{conLog}(s,\,[(\mathrm{alarmaBaja},\;0)])\bigr)
+    \end{aligned}
+    & \text{si } est_{\mathrm{bolsa}} = \mathrm{llena}
+    \\[3ex]
+    \begin{aligned}
+      \bigl(&uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,est_{\mathrm{bolsa}},\;\tau_{\mathrm{bolsa}}-e,\; \\
+            &[(a_1,\,\max(0,d_1-e)),\,(a_2,d_2),\ldots]\bigr)
+    \end{aligned}
+    & \begin{aligned}
+        &\text{si } est_{\mathrm{bolsa}} \in \{\mathrm{bolsaBaja},\,\mathrm{esperandoDetencion},\,\mathrm{vacia}\} \\
+        &\quad\land \mathit{acciones} = [(a_1,d_1),(a_2,d_2),\ldots]
+      \end{aligned}
   \end{cases}
 \]
 
 Transiciones internas — ciclo de vida de la bolsa:
 \begin{align*}
-  \delta_{\mathrm{int}}&(uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,
-    \mathrm{bolsaBaja},\,\tau_{\mathrm{bolsa}},\,[(\mathrm{alarmaBaja},0)]) \\
-  &= (uCM,\;cO,\;tol,\;est_{\mathrm{flujo}},\;
-      \mathrm{esperandoDetencion},\;60,\;[])
+  \delta_{\mathrm{int}}(uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,\mathrm{bolsaBaja},\,\tau_{\mathrm{bolsa}},\,[(\mathrm{alarmaBaja},0)])
+  &= (uCM,\;cO,\;tol,\;est_{\mathrm{flujo}},\;\mathrm{esperandoDetencion},\;60,\;[])
 \end{align*}
 
 \begin{align*}
-  \delta_{\mathrm{int}}&(uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,
-    \mathrm{esperandoDetencion},\,0,\,[]) \\
-  &= (uCM,\;cO,\;tol,\;est_{\mathrm{flujo}},\;
-      \mathrm{vacia},\;0,\;\mathrm{conLog}(s,\,[(\mathrm{detenerBomba},\;0)]))
+  \delta_{\mathrm{int}}(uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,\mathrm{esperandoDetencion},\,0,\,[])
+  &= (uCM,\;cO,\;tol,\;est_{\mathrm{flujo}},\;\mathrm{vacia},\;0,\;\mathrm{conLog}(s,\,[(\mathrm{detenerBomba},\;0)]))
 \end{align*}
 
 \begin{align*}
-  \delta_{\mathrm{int}}&(uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,
-    \mathrm{vacia},\,0,\,[(\mathrm{detenerBomba},0)]) \\
-  &= (uCM,\;cO,\;tol,\;est_{\mathrm{flujo}},\;
-      \mathrm{vacia},\;\infty,\;[])
+  \delta_{\mathrm{int}}(uCM,\,cO,\,tol,\,est_{\mathrm{flujo}},\,\mathrm{vacia},\,0,\,[(\mathrm{detenerBomba},0)])
+  &= (uCM,\;cO,\;tol,\;est_{\mathrm{flujo}},\;\mathrm{vacia},\;\infty,\;[])
 \end{align*}
 
 \paragraph{Función de salida y transición interna general.}
