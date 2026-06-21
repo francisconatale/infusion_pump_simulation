@@ -1,46 +1,80 @@
-\section{Módulo de Registro con Historial Acumulativo}
+\section{Módulo \emph{Logger}}
 
-Este componente almacena cronológicamente snapshots del estado completo del controlador.
+Registra eventos del controlador, del módulo de alarma y de las confirmaciones de enfermería en un archivo CSV. El logger es siempre pasivo: solo reacciona a estímulos externos y nunca programa una transición interna.
 
 \subsection{Definición formal}
 
-\paragraph{Puertos y estructura del estado.}
-\[
-  S_{\mathrm{ctrl}} = \mathbb{R}_{\ge 0} \times \dots \times (A^* \times \mathbb{R}_{\ge 0})^*
-\]
+\paragraph{Puertos.}
 
 \begin{align*}
-  X &= ((\mathrm{registrarEvento},\, S_{\mathrm{ctrl}}),\, 9) \\[4pt]
-  Y &= \varnothing \\[4pt]
-  S &= \mathcal{L}(S_{\mathrm{ctrl}} \times \mathbb{R}_{\ge 0})
-       \times \mathbb{R}_{\ge 0}
-       \times \{\infty\}
+  X &=
+      \{ \mathrm{in\_state\_control} \} \times \{ 0 \}
+      \;\cup\;
+      \{ \mathrm{in\_alarm\_module} \} \times \{ 1 \}
+      \;\cup\;
+      \{ \mathrm{in\_nurse\_confirmation} \} \times \{ 2 \} \\[4pt]
+  Y &= \varnothing
 \end{align*}
 
-La tupla de estado $s \in S$ se define como $s = (\mathit{lista},\; t_{\mathrm{acum}},\; \mu)$.
+\paragraph{Estado.}
+
+\[
+  S = \mathbb{R}_{\ge 0} \times \{ \infty \}
+\]
+
+La tupla de estado $s \in S$ es $s = (t_{\mathrm{acum}},\; \infty)$. El campo $t_{\mathrm{acum}}$ acumula el tiempo transcurrido desde el inicio de la simulación. Adicionalmente existe un estado interno auxiliar $\mathit{last\_data}$ (no incluido en el estado DEVS formal) que retiene los valores de los once campos que se escriben en el CSV: \texttt{flow\_state}, \texttt{tolerance\_count}, \texttt{bag\_state}, \texttt{bag\_time\_remaining}, \texttt{actual\_flow}, \texttt{target\_flow}, \texttt{medical\_order}, \texttt{actions\_count}, \texttt{actions} y \texttt{alarm\_state}.
 
 \paragraph{Estado inicial.}
+
 \[
-  s_0 = ([\;],\; 0,\; \infty)
+  s_0 = (0,\; \infty)
 \]
 
-\paragraph{Transición externa ($\dext$).}
-Sea $\mathit{lista} \mathbin{\Vert} (s_{\mathrm{ctrl}},\, t)$ la operación de anexar un elemento al final de la secuencia:
 \[
-  \dext\bigl((\mathit{lista},\; t_{\mathrm{acum}},\; \infty),\;
-             e,\;
-             ((\mathrm{registrarEvento},\, s_{\mathrm{ctrl}}),\; 9)\bigr)
-  \;=\;
-  \bigl(\,
-    \mathit{lista} \mathbin{\Vert} (s_{\mathrm{ctrl}},\; t_{\mathrm{acum}} + e),\;
-    t_{\mathrm{acum}} + e,\;
-    \infty
-  \bigr)
+  \mathit{last\_data}_0 = \{
+    \texttt{flow\_state} \mapsto \mathrm{normal},\;
+    \texttt{tolerance\_count} \mapsto 0,\;
+    \texttt{bag\_state} \mapsto \mathrm{llena},\;
+    \texttt{bag\_time\_remaining} \mapsto 0,\;
+    \texttt{actual\_flow} \mapsto 0,\;
+    \texttt{target\_flow} \mapsto 0,\;
+    \texttt{medical\_order} \mapsto \mathrm{esperando},\;
+    \texttt{actions} \mapsto [],\;
+    \texttt{actions\_count} \mapsto 0,\;
+    \texttt{alarm\_state} \mapsto \mathrm{no\_alarm}
+  \}
 \]
 
-\paragraph{Transición interna ($\dint$).}
+\paragraph{Función de transición externa ($\delta_{\mathrm{ext}}$).}
+
+Sean $p$ el puerto, $v$ el valor recibido y $e$ el tiempo transcurrido desde la última transición. Se definen tres casos:
+
+\begin{itemize}
+  \item \textbf{Puerto \texttt{in\_state\_control} ($p = 0$).} Recibe el snapshot $s_{\mathrm{ctrl}}$ del controlador, del cual extrae \texttt{flow\_state}, \texttt{tolerance\_count}, \texttt{bag\_state}, \texttt{actual\_flow}, \texttt{target\_flow}, \texttt{medical\_order} y \texttt{actions}. Se actualiza $\mathit{last\_data}$ con esos valores y se escribe una fila en el CSV con tipo de evento \texttt{control} y timestamp $t_{\mathrm{acum}} + e$:
+  \[
+    \delta_{\mathrm{ext}}\bigl((t_{\mathrm{acum}},\; \infty),\; e,\; (\mathrm{in\_state\_control},\; 0),\; s_{\mathrm{ctrl}}\bigr)
+    \;=\;
+    \bigl(t_{\mathrm{acum}} + e,\; \infty\bigr)
+  \]
+
+  \item \textbf{Puerto \texttt{in\_alarm\_module} ($p = 1$).} Recibe el estado de alarma $v_{\mathrm{alarm}}$. Actualiza $\mathit{last\_data}[\texttt{alarm\_state}] \gets v_{\mathrm{alarm}}$ y escribe una fila CSV con tipo de evento \texttt{alarm} y timestamp $t_{\mathrm{acum}} + e$:
+  \[
+    \delta_{\mathrm{ext}}\bigl((t_{\mathrm{acum}},\; \infty),\; e,\; (\mathrm{in\_alarm\_module},\; 1),\; v_{\mathrm{alarm}}\bigr)
+    \;=\;
+    \bigl(t_{\mathrm{acum}} + e,\; \infty\bigr)
+  \]
+
+  \item \textbf{Puerto \texttt{in\_nurse\_confirmation} ($p = 2$).} Resetea $\mathit{last\_data}[\texttt{alarm\_state}] \gets \mathrm{no\_alarm}$ y escribe una fila CSV con tipo de evento \texttt{nurse\_confirmation} y timestamp $t_{\mathrm{acum}} + e$:
+  \[
+    \delta_{\mathrm{ext}}\bigl((t_{\mathrm{acum}},\; \infty),\; e,\; (\mathrm{in\_nurse\_confirmation},\; 2),\; \cdot\bigr)
+    \;=\;
+    \bigl(t_{\mathrm{acum}} + e,\; \infty\bigr)
+  \]
+\end{itemize}
+
+\paragraph{Función de transición interna ($\delta_{\mathrm{int}}$).}
 \[
-  \dint(s) = s
+  \delta_{\mathrm{int}}(s) = s
 \]
 
 \paragraph{Función de salida ($\lambda$).}
@@ -48,7 +82,7 @@ Sea $\mathit{lista} \mathbin{\Vert} (s_{\mathrm{ctrl}},\, t)$ la operación de a
   \lambda(s) = \varnothing
 \]
 
-\paragraph{Avance temporal ($\ta$).}
+\paragraph{Avance temporal ($ta$).}
 \[
-  \ta(s) = \infty
+  ta(s) = \infty
 \]

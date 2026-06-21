@@ -12,9 +12,10 @@ La bomba modifica el caudal real en respuesta a comandos del controlador. El act
      \times \underbrace{\mathbb{R}_0^+}_{\mu}
 \end{align*}
 
-\paragraph{Función de saturación.}
+\paragraph{Función de atenuación y saturación.}
 \[
-  \mathrm{sat}_{[0,200]}(x) = \max(0,\, \min(200,\, x))
+  \mathrm{ajustar}(x,\,\Delta) = \mathrm{sat}_{[0,200]}\bigl(x + \alpha\cdot\Delta\bigr),
+  \qquad \alpha \sim U(0.10,\,0.30)
 \]
 
 \paragraph{Transición externa.}
@@ -22,10 +23,10 @@ La bomba modifica el caudal real en respuesta a comandos del controlador. El act
 \dext&\bigl((cR,\,est,\,\mu),\;e,\;(\mathrm{detenerBomba},\,1)\bigr)
   \;=\; (0,\;\mathrm{detenida},\;0)
 \\[6pt]
-\dext&\bigl((cR,\,est,\,\mu),\;e,\;((\mathrm{ajustarBomba},\,\Delta),\,-1)\bigr)
-  \;=\; \Bigl(\mathrm{sat}_{[0,200]}\bigl(cR + \Delta\bigr),\;
+\dext&\bigl((cR,\,est,\,\mu),\;e,\;((\mathrm{ajustarBomba},\,\Delta),\,1)\bigr)
+  \;=\; \Bigl(\mathrm{ajustar}(cR,\,\Delta),\;
               \mathrm{corriendo},\;
-              \mathrm{random\_truncado}(0.5)\Bigr)
+              \mathrm{random\_truncado}(5)\Bigr)
 \end{align*}
 
 \paragraph{Transición interna.}
