@@ -36,7 +36,8 @@ Verifying: Infusion must start within 3 seconds of receiving a positive medical 
 ============================================================
 
 Verifying: Bag end must emit low alarm and stop infusion within 60 seconds...
-  [92mPASSED: Property holds for all records![0m
+    - Line 20277 (t=20275.023): flow_state=normal_flow, actual_flow=100.000
+    - Line 20278 (t=20275.023): flow_state=normal_flow, actual_flow=100.000
 
 Verifying: After critical alarm pump stays stopped until nurse confirmation...
   [92mPASSED: Property holds for all records![0m
@@ -47,4 +48,4 @@ Verifying: Unconfirmed critical alarm must repeat...
 Verifying: Unconfirmed critical alarm must repeat after 30s (every 10s)...
   [92mPASSED: Property holds for all records![0m
 
-[92mAll properties verified successfully![0m
+[91mSome properties failed verification.[0m
