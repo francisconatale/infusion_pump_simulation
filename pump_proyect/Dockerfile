@@ -10,8 +10,8 @@ RUN git clone https://github.com/capocchi/PythonPDEVS.git && \
     cd PythonPDEVS/src && \
     python setup.py install
 
-COPY requirements.txt .
+COPY . .
 
-RUN pip install -r requirements.txt
+RUN pip install --timeout 300 -r requirements.txt -v
 
-CMD ["python", "main.py"]
+CMD python main.py && python src/analysis/plotter.py
