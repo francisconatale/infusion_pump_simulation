@@ -73,6 +73,18 @@ class InitialStatesFactory:
             states["controller"]["initial_last_sensor_medition"] = 100.0
             states["controller"]["initial_medical_order"] = 120.0
 
+        elif scenario_lower == "orden_medica_cero":
+            states["controller"]["initial_flow_state"] = (FlowState.NORMAL_FLOW, 0.0)
+            states["controller"]["initial_last_sensor_medition"] = 120.0
+            states["controller"]["initial_medical_order"] = 120.0
+            states["actuator"]["initial_currentCaudal"] = 120.0
+            states["actuator"]["initial_status"] = ActuatorStatus.RUNNING
+            states["sensor"]["initial_current_flow"] = 120.0
+            states["med_order"]["initial_sigma"] = 0.0
+            states["med_order"]["initial_order"] = (2, 0)
+            states["med_order"]["initial_hours"] = 2.0
+            states["med_order"]["initial_ml"] = 0.0
+
         else:
             raise ValueError(
                 f"Escenario desconocido: '{scenario}'. "
