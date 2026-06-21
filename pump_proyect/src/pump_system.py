@@ -10,17 +10,29 @@ from src.models.logger import Logger
 
 
 class PumpSystem(CoupledDEVS):
-    def __init__(self, client_criticality):
+    def __init__(self, client_criticality, medical_order_generator_kwargs=None,
+    bag_generator_kwargs=None,
+    nurse_generator_kwargs=None):
         super().__init__("PumpSystem")
 
+        medical_order_generator_kwargs = \
+            medical_order_generator_kwargs or {}
+
+        bag_generator_kwargs = \
+            bag_generator_kwargs or {}
+
+        nurse_generator_kwargs = \
+            nurse_generator_kwargs or {}
+            
         self.client_criticality = client_criticality
 
         self.medical_order_generator = self.addSubModel(
-            MedicalOrderGenerator(client_criticality)
+            MedicalOrderGenerator(client_criticality,
+            **medical_order_generator_kwargs)
         )
 
         self.end_bag_generator = self.addSubModel(
-            EndBagGenerator()
+            EndBagGenerator(**bag_generator_kwargs)
         )
 
         self.controller_pump = self.addSubModel(
@@ -36,7 +48,7 @@ class PumpSystem(CoupledDEVS):
         )
 
         self.nurse_confirmation_generator = self.addSubModel(
-            GeneratorNurseConfirmation()
+            GeneratorNurseConfirmation(**nurse_generator_kwargs)
         )
 
         self.alarm_module = self.addSubModel(

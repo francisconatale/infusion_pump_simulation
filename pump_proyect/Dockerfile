@@ -14,4 +14,4 @@ COPY . .
 
 RUN pip install --timeout 300 -r requirements.txt -v
 
-CMD python main.py && python src/analysis/plotter.py
+CMD ["python", "run_scenarios.py"]
