@@ -13,6 +13,9 @@ docker run --name "$CONTAINER_NAME" "$IMAGE_NAME"
 echo "=== Copying resultados.csv to local ==="
 docker cp "$CONTAINER_NAME":/app/resultados.csv ./resultados.csv
 
+echo "=== Copying generated docs images to local ==="
+docker cp "$CONTAINER_NAME":/app/docs/. ./docs/
+
 echo "=== Cleaning up container ==="
 docker rm "$CONTAINER_NAME"
 
