@@ -20,9 +20,7 @@ class MedicalOrderGenerator(AtomicDEVS):
     def __init__(self,
                  client_criticality: float = 1.0,
                  initial_sigma: float = 0.0,
-                 initial_order: tuple = None,
-                 initial_hours: float = None,
-                 initial_ml: float = None):
+                 initial_order: tuple = None):
         super().__init__("MedicalOrderGenerator")
 
         self.out_medical_order = self.addOutPort("out_medical_order")
@@ -34,27 +32,14 @@ class MedicalOrderGenerator(AtomicDEVS):
         else:
             order = initial_order
 
-        if initial_hours is None:
-            hours = order[0]
-        else:
-            hours = initial_hours
-
-        if initial_ml is None:
-            ml = order[1]
-        else:
-            ml = initial_ml
-
         self.state = {
             "sigma": initial_sigma,
-            "order": order,
-            "hours": hours,
-            "ml": ml
+            "order": order
         }
 
     def intTransition(self) -> dict:
         self.state["order"] = self.factory.next_order()
-        self.state["hours"], self.state["ml"] = self.state["order"]
-        self.state["sigma"] = hours_to_seconds(self.state["hours"])
+        self.state["sigma"] = hours_to_seconds(self.state["order"][0])
         return self.state
 
     def outputFnc(self) -> dict:

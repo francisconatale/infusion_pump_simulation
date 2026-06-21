@@ -38,9 +38,7 @@ class InitialStatesFactory:
             },
             "med_order": {
                 "initial_sigma": 0.0,
-                "initial_order": None,
-                "initial_hours": None,
-                "initial_ml": None
+                "initial_order": None
             },
             "nurse": {
                 "initial_sigma": infinity,
