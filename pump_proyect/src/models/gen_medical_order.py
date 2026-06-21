@@ -17,18 +17,35 @@ class MedicalOrderGenerator(AtomicDEVS):
       # In DEVS simulation, will emit orders on 'out_medical_order' port
     """
 
-    def __init__(self, client_criticality: float = 1.0):
+    def __init__(self,
+                 client_criticality: float = 1.0,
+                 initial_sigma: float = 0.0,
+                 initial_order: tuple = None,
+                 initial_hours: float = None,
+                 initial_ml: float = None):
         super().__init__("MedicalOrderGenerator")
 
         self.out_medical_order = self.addOutPort("out_medical_order")
 
         self.factory = MedicalOrderFactory(client_criticality)
 
-        order = self.factory.next_order()
-        hours, ml = order
+        if initial_order is None:
+            order = self.factory.next_order()
+        else:
+            order = initial_order
+
+        if initial_hours is None:
+            hours = order[0]
+        else:
+            hours = initial_hours
+
+        if initial_ml is None:
+            ml = order[1]
+        else:
+            ml = initial_ml
 
         self.state = {
-            "sigma": 0.0,
+            "sigma": initial_sigma,
             "order": order,
             "hours": hours,
             "ml": ml

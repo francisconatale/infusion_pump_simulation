@@ -10,41 +10,52 @@ from src.models.logger import Logger
 
 
 class PumpSystem(CoupledDEVS):
-    def __init__(self, client_criticality):
+    def __init__(self, client_criticality: float, initial_states: dict = None):
         super().__init__("PumpSystem")
 
         self.client_criticality = client_criticality
 
+        # Extract initial states parameters for each submodel, defaulting to empty dicts
+        initial_states = initial_states or {}
+        med_gen_init = initial_states.get("med_order", {})
+        end_bag_init = initial_states.get("end_bag", {})
+        controller_init = initial_states.get("controller", {})
+        actuator_init = initial_states.get("actuator", {})
+        sensor_init = initial_states.get("sensor", {})
+        nurse_init = initial_states.get("nurse", {})
+        alarm_init = initial_states.get("alarm", {})
+        logger_init = initial_states.get("logger", {})
+
         self.medical_order_generator = self.addSubModel(
-            MedicalOrderGenerator(client_criticality)
+            MedicalOrderGenerator(client_criticality=client_criticality, **med_gen_init)
         )
 
         self.end_bag_generator = self.addSubModel(
-            EndBagGenerator()
+            EndBagGenerator(**end_bag_init)
         )
 
         self.controller_pump = self.addSubModel(
-            PumpController()
+            PumpController(**controller_init)
         )
 
         self.actuator_pump = self.addSubModel(
-            ActuatorPump()
+            ActuatorPump(**actuator_init)
         )
 
         self.sensor_flow = self.addSubModel(
-            SensorFlow()
+            SensorFlow(**sensor_init)
         )
 
         self.nurse_confirmation_generator = self.addSubModel(
-            GeneratorNurseConfirmation()
+            GeneratorNurseConfirmation(**nurse_init)
         )
 
         self.alarm_module = self.addSubModel(
-            AlarmModule()
+            AlarmModule(**alarm_init)
         )
 
         self.logger = self.addSubModel(
-            Logger()
+            Logger(**logger_init)
         )
 
         # Puerto de salida externo (EOC): M_alarmas → N

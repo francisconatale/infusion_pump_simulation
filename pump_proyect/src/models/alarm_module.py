@@ -15,7 +15,7 @@ class ModuleAlarmStatus(Enum):
 
 
 class AlarmModule(AtomicDEVS):
-    def __init__(self):
+    def __init__(self, initial_alarm_state=AlarmStatus.NO_ALARM, initial_hours=infinity):
         super().__init__("AlarmModule")
 
         self.in_alarm = self.addInPort("in_alarm")
@@ -24,8 +24,8 @@ class AlarmModule(AtomicDEVS):
         self.out_alarm = self.addOutPort("out_alarm")
 
         self.state = {
-            "alarm_state": AlarmStatus.NO_ALARM,
-            "hours": infinity
+            "alarm_state": initial_alarm_state,
+            "hours": initial_hours
         }
 
     def extTransition(self, inputs) -> dict:

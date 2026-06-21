@@ -8,14 +8,14 @@ class ActuatorStatus(Enum):
     IDLE = "in_controller"
 
 class ActuatorPump(AtomicDEVS):
-    def __init__(self):
+    def __init__(self, initial_currentCaudal=0.0, initial_status=ActuatorStatus.IDLE, initial_sigma=float('inf')):
         super().__init__("ActuatorPump")
         self.in_controller = self.addInPort("in_controller")
         self.out_sensor_flow = self.addOutPort("out_sensor_flow")
         self.state = {
-            "currentCaudal": 0.0,
-            "status": ActuatorStatus.IDLE,
-            "sigma": float('inf')
+            "currentCaudal": initial_currentCaudal,
+            "status": initial_status,
+            "sigma": initial_sigma
         } 
 
     def extTransition(self, inputs) -> dict:

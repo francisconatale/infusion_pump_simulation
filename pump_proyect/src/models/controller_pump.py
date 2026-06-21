@@ -56,7 +56,13 @@ def no_tolerable(cO: float, uCM: float) -> bool:
     return (abs(cO - uCM)) / cO > 0.10
 
 class PumpController(AtomicDEVS):
-    def __init__(self):
+    def __init__(self,
+                 initial_flow_state=(FlowState.NORMAL_FLOW, 0.0),
+                 initial_bag_state=(BagState.NORMAL_BAG, float('inf')),
+                 initial_last_sensor_medition=0.0,
+                 initial_medical_order=0.0,
+                 initial_tolerance_exceedance_start_time=0.0,
+                 initial_actions=None):
         super().__init__("PumpController")
         
         # Ports
@@ -70,12 +76,12 @@ class PumpController(AtomicDEVS):
         self.out_log = self.addOutPort("out_log")
         
         self.state = {
-            "flow_state": (FlowState.NORMAL_FLOW, 0.0),       # (Enum, tol)
-            "bag_state": (BagState.NORMAL_BAG, float('inf')), # (Enum, tau_bolsa)
-            "last_sensor_medition": 0.0,                      # uCM
-            "medical_order": 0.0,                             # cO
-            "tolerance_exceedance_start_time": 0.0,           
-            "actions": []                                     
+            "flow_state": initial_flow_state,
+            "bag_state": initial_bag_state,
+            "last_sensor_medition": initial_last_sensor_medition,
+            "medical_order": initial_medical_order,
+            "tolerance_exceedance_start_time": initial_tolerance_exceedance_start_time,
+            "actions": initial_actions if initial_actions is not None else []
         }
 
     def tolerance_exceeded(self, last_sensor_medition: float, objective: float) -> bool:

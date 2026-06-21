@@ -17,7 +17,7 @@ class EndBagGenerator(AtomicDEVS):
       - out_end_bag: output port emitting (hours_interval, flow_ml_h) tuples
     """
 
-    def __init__(self):
+    def __init__(self, initial_phase=BagState.INACTIVE, initial_hours=infinity):
         super().__init__("EndBagGenerator")
 
         ## X
@@ -28,8 +28,8 @@ class EndBagGenerator(AtomicDEVS):
 
         ## Initial state
         self.state = {
-            "phase" : BagState.INACTIVE,
-            "hours" : infinity
+            "phase" : initial_phase,
+            "hours" : initial_hours
         }
 
     def extTransition(self, inputs) -> dict:

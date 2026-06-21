@@ -11,15 +11,15 @@ class NurseState(Enum):
 
 class GeneratorNurseConfirmation(AtomicDEVS):
 
-    def __init__(self):
+    def __init__(self, initial_sigma=float("inf"), initial_phase=NurseState.IDLE):
         super().__init__("GeneratorNurseConfirmation")
 
         self.in_alarm = self.addInPort("in_alarm")
         self.out_confirmation = self.addOutPort("out_confirmation")
 
         self.state = {
-            "sigma": float("inf"),
-            "phase": NurseState.IDLE
+            "sigma": initial_sigma,
+            "phase": initial_phase
         }
 
     def extTransition(self, inputs) -> dict:

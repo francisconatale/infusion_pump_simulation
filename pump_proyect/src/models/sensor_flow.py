@@ -3,15 +3,15 @@ from pypdevs.DEVS import AtomicDEVS
 
 
 class SensorFlow(AtomicDEVS):
-    def __init__(self):
+    def __init__(self, initial_current_flow=0.0, initial_sigma=float("inf")):
         super().__init__("SensorFlow")
 
         self.in_actuator = self.addInPort("in_actuator")
         self.out_flow_measurement = self.addOutPort("out_flow_measurement")
 
         self.state = {
-            "current_flow": 0.0,
-            "sigma": float("inf")
+            "current_flow": initial_current_flow,
+            "sigma": initial_sigma
         }
 
     def extTransition(self, inputs) -> dict:

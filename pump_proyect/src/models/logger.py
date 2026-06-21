@@ -40,26 +40,30 @@ class Logger(AtomicDEVS):
         "alarm_state"
     ]
 
-    def __init__(self):
+    def __init__(self, initial_accumulated_time=0.0, log_filename="resultados.csv", initial_last_data=None):
         super().__init__("Logger")
         self.in_state_control = self.addInPort("in_state_control")
         self.in_alarm_module = self.addInPort("in_alarm_module")
         self.in_nurse_confirmation = self.addInPort("in_nurse_confirmation")
 
-        self.log_file = open("resultados.csv", "w", newline="", encoding="utf-8")
+        self.log_file = open(log_filename, "w", newline="", encoding="utf-8")
         self.writer = csv.writer(self.log_file)
         self.writer.writerow(self.HEADER)
         self.log_file.flush()
 
-        self.last_data = {
-            "flow_state": "NORMAL_FLOW", "tolerance_count": 0,
-            "bag_state": "NORMAL_BAG", "bag_time": infinity,
-            "actual_flow": 0.0, "target_flow": 0.0,
-            "medical_order": 0, "actions_count": 0, "actions": "",
-            "alarm_state": "no_alarm"
-        }
+        if initial_last_data is None:
+            self.last_data = {
+                "flow_state": "NORMAL_FLOW", "tolerance_count": 0,
+                "bag_state": "NORMAL_BAG", "bag_time": infinity,
+                "actual_flow": 0.0, "target_flow": 0.0,
+                "medical_order": 0, "actions_count": 0, "actions": "",
+                "alarm_state": "no_alarm"
+            }
+        else:
+            self.last_data = initial_last_data.copy()
+
         self.state = {
-            "accumulated_time": 0.0
+            "accumulated_time": initial_accumulated_time
         }
 
     def _write_row(self, event_type, actual_flow):
