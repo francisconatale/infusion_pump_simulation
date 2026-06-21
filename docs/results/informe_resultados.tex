@@ -1,0 +1,271 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{left=2.5cm,right=2.5cm,top=3cm,bottom=3cm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage{subcaption}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    pdftitle={Análisis de Simulación y Verificación de Propiedades - Bomba de Infusión DEVS},
+    pdfpagemode=FullScreen,
+}
+
+\title{
+    \vspace{-2cm}
+    \textbf{\large Universidad de Buenos Aires} \\
+    \textbf{\large Simulación de Eventos Discretos (DEVS)} \\
+    \vspace{1.5cm}
+    \Huge \textbf{Bomba de Infusión de Medicación} \\
+    \vspace{0.5cm}
+    \Large Análisis de Resultados de Simulación y Verificación Formal de Propiedades \\
+    \vspace{1.5cm}
+}
+\author{
+    \textbf{Autores:} \\
+    Francisco Natale \\
+    Damián Dalio \\
+    \vspace{1.5cm}
+}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\clearpage
+
+\tableofcontents
+\clearpage
+
+\section{Introducción}
+El diseño de sistemas biomédicos críticos, tales como las bombas de infusión intravenosa, requiere garantías de funcionamiento rigurosas en términos de estabilidad temporal y seguridad ante fallas. En este trabajo se analiza la simulación y verificación formal del comportamiento de una bomba de infusión simplificada modelada mediante el formalismo DEVS (Discrete Event System Specification).
+
+Dado que las especificaciones de los modelos atómicos y las transiciones ya han sido formalizadas en etapas anteriores, este informe se centra estrictamente en:
+\begin{enumerate}
+    \item La ejecución y análisis de los diferentes \textbf{escenarios de simulación} (funcionamiento normal, desviaciones, alarmas y confirmación).
+    \item La presentación y discusión de los \textbf{resultados gráficos} obtenidos en la simulación.
+    \item La \textbf{verificación formal de propiedades} de Seguridad (\textit{Safety}), Vivacidad (\textit{Liveness}) y Temporales (\textit{Real-Time Constraints}) a partir de las trazas de ejecución.
+\end{enumerate}
+
+---
+
+\section{Escenarios de Simulación y Resultados}
+La simulación fue ejecutada bajo cuatro perfiles de configuración de escenarios definidos en el entorno de simulación PyPDEVS. A continuación, se describen detalladamente los objetivos de cada uno, las configuraciones de parámetros y el análisis de los gráficos generados.
+
+\subsection{Perfil 1: Flujo Normal Corto (Normal Operation)}
+\subsubsection{Objetivo y Configuración}
+Este escenario simula el comportamiento estándar de la bomba ante órdenes médicas sucesivas sin condiciones de falla del hardware. Sus parámetros principales se resumen en la Tabla \ref{tab:config_normal_corto}.
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lr}
+        \toprule
+        \textbf{Parámetro} & \textbf{Valor / Rango} \\
+        \midrule
+        Duración de la Simulación & $1000\text{ s}$ \\
+        Criticidad del Cliente & $0.95$ \\
+        Orden Médica Inicial & $0.0\text{ ml/h}$ (Detenida) \\
+        Desvío de Flujo & Ninguno (Simulación Ideal) \\
+        \bottomrule
+    \end{tabular}
+    \caption{Configuración del Escenario de Flujo Normal Corto.}
+    \label{tab:config_normal_corto}
+\end{table}
+
+\subsubsection{Análisis de Gráficos y Métricas}
+    \item \textbf{Caudal y Estado de Flujo:} La bomba responde de manera inmediata ($< 3\text{ s}$) a cada cambio en la orden médica, estabilizando el caudal real con una latencia de amortiguación inferior a $0.5\text{ s}$. El estado del flujo se mantiene en todo momento en \textit{normal\_flow}.
+    
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{images/flujo_normal_corto/flujo.png}
+        \caption{Perfil 1 (Flujo Corto): Caudal Indicado vs Real y Órdenes Médicas.}
+        \label{fig:normal_corto_flujo}
+    \end{figure}
+
+    \item \textbf{Tolerancia y Alarmas:} El contador de tolerancia no acumula desvíos significativos. Ocasionalmente se registran micro-desvíos debido a la latencia inicial del actuador al cambiar la consigna, pero estos son rápidamente corregidos por el controlador en lazo cerrado antes de alcanzar el umbral de disparo de alarmas.
+    \item \textbf{Métricas Clave:}
+    \begin{itemize}
+        \item Porcentaje de infusión correcta: \textbf{99.00\%} del tiempo total.
+        \item Cantidad de detenciones preventivas: \textbf{0}.
+        \item Alarmas generadas: Únicamente transiciones menores que no escalaron.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Perfil 2: Falla de Tolerancia (Fault Tolerance)}
+\subsubsection{Objetivo y Configuración}
+Este perfil evalúa la capacidad del controlador para responder ante un desvío sostenido del caudal administrado. Se configura un escenario de falla física en el actuador que provoca que el caudal medido difiera en más de un 10\% respecto de la orden médica durante un lapso prolongado de tiempo.
+
+\subsubsection{Análisis de Gráficos y Métricas}
+\begin{itemize}
+    \item \textbf{Detección del Desvío y Escalado de Alarmas:} Al inicio del desvío, la bomba detecta la diferencia entre el caudal de la orden ($120\text{ ml/h}$) y el medido ($100\text{ ml/h}$). El contador de tolerancia incrementa segundo a segundo hasta alcanzar el límite máximo de $5.0$ (equivalente a $5\text{ s}$ de desviación continua).
+    \item \textbf{Emisión de Alarmas:} Al expirar la tolerancia, el controlador dispara inmediatamente una \textit{alarmaMedia} (Medium Alarm). Ante la persistencia de la falla física (incapacidad de corregir el caudal), el sistema efectúa la transición al estado crítico, emitiendo una \textit{alarmaCritica} (Critical Alarm) y ejecutando la acción \textit{stop\_pump} para garantizar la seguridad del paciente.
+    
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{images/falla_tolerancia/flujo.png}
+        \caption{Perfil 2 (Falla de Tolerancia): Desviación y Detención de Seguridad.}
+        \label{fig:falla_tolerancia_flujo}
+    \end{figure}
+
+    \item \textbf{Confirmación de Enfermero:} Las alarmas críticas son reiteradas de acuerdo a los tiempos configurados hasta recibir el evento de confirmación del enfermero.
+    \item \textbf{Métricas Clave:}
+    \begin{itemize}
+        \item Porcentaje de infusión correcta: \textbf{98.58\%} (la detención segura interrumpe la infusión incorrecta).
+        \item Cantidad de detenciones preventivas: \textbf{8}.
+        \item Alarmas detectadas: \textit{medium\_alarm} y \textit{critical\_alarm}.
+        \item Tiempo promedio de respuesta del enfermero: \textbf{17.74\text{ s}} (Min: $9.66\text{ s}$, Max: $25.82\text{ s}$).
+    \end{itemize}
+\end{itemize}
+
+\subsection{Perfil 3: Paciente Crítico Alarma (Critical Patient Alarm)}
+\subsubsection{Objetivo y Configuración}
+Este escenario modela una situación crítica donde el controlador inicia con una alarma crítica activa y la bomba bloqueada en estado de seguridad. Se analiza la respuesta ante múltiples confirmaciones y cambios bruscos de orden médica.
+
+\subsubsection{Análisis de Gráficos y Métricas}
+\begin{itemize}
+    \item \textbf{Ciclo de Alarma y Confirmación:} Se observa una secuencia repetitiva de alarma crítica no confirmada en los primeros segundos de simulación. Al llegar la confirmación médica a los $69\text{ s}$, la bomba se desbloquea y el estado del flujo pasa temporalmente a normal.
+    
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{images/paciente_critico_alarma/alarmas.png}
+        \caption{Perfil 3 (Paciente Crítico): Evolución de Alarmas y Confirmaciones del Enfermero.}
+        \label{fig:critico_alarmas}
+    \end{figure}
+
+    \item \textbf{Métricas Clave:}
+    \begin{itemize}
+        \item Porcentaje de infusión correcta: \textbf{94.79\%}.
+        \item Cantidad de detenciones preventivas: \textbf{8} (debido al estado inicial crítico y la simulación forzada de fallas recurrentes).
+        \item Tiempo promedio de respuesta del enfermero ante alarmas críticas: \textbf{4.56\text{ s}} (con una rápida respuesta mínima de $0.06\text{ s}$ ante la segunda alarma programada).
+    \end{itemize}
+\end{itemize}
+
+\subsection{Perfil 4: Flujo Normal 10 Horas (Long-term Monitoring)}
+\subsubsection{Objetivo y Configuración}
+Para verificar la robustez del modelo frente al paso del tiempo y descartar desbordes numéricos o derivas temporales, se simula una infusión continua de larga duración ($36000\text{ s} \approx 10\text{ h}$). En este escenario se programa la simulación de final de bolsa de medicación (`finBolsa`) para analizar el comportamiento ante el agotamiento de volumen.
+
+\subsubsection{Análisis de Gráficos y Métricas}
+\begin{itemize}
+    \item \textbf{Evento Fin de Bolsa:} Al recibir la señal `finBolsa` a los $20924\text{ s}$, el controlador emite instantáneamente una \textit{alarmaBaja} (Low Alarm) como advertencia preventiva.
+    \item \textbf{Detención Automática:} Tras la alarma de fin de bolsa, la bomba permite la infusión por un máximo estricto de $60\text{ s}$. Transcurrido este plazo, la infusión se detiene automáticamente y la bomba pasa al estado de detención segura.
+    
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{images/flujo_normal_10_horas/fin_de_bolsa.png}
+        \caption{Perfil 4 (10 Horas): Comportamiento del Estado de la Bolsa y Detención por Vacío.}
+        \label{fig:10h_fin_bolsa}
+    \end{figure}
+
+    \item \textbf{Métricas Clave:}
+    \begin{itemize}
+        \item Porcentaje de infusión correcta: \textbf{99.85\%} (un nivel de estabilidad excepcional a largo plazo).
+        \item Cantidad de detenciones preventivas: \textbf{7} (incluyendo el fin de bolsa y detenciones operativas).
+        \item Tiempo de respuesta del enfermero al fin de bolsa: \textbf{52.28\text{ s}}, confirmando la alarma antes de la detención física o justo durante la misma.
+    \end{itemize}
+\end{itemize}
+
+---
+
+\section{Verificación Formal de Propiedades}
+Para asegurar matemáticamente que la implementación DEVS se comporta de acuerdo a las especificaciones del diseño biomédico, se ejecutó un validador estático sobre las trazas CSV. Las propiedades se clasifican en Seguridad, Vivacidad y Temporales.
+
+\subsection{Propiedades de Seguridad (Safety)}
+Las propiedades de seguridad garantizan que la bomba ``nunca realice una acción prohibida''.
+
+\begin{enumerate}
+    \item \textbf{Acotación del Contador de Tolerancia:}
+    \[ 0 \leq \text{tolerance\_count} \leq 5 \]
+    \textit{Resultado:} \textbf{APROBADO}. El contador nunca supera $5.0$, disparándose la alarma media inmediatamente al alcanzar este valor.
+    
+    \item \textbf{Límites del Caudal de la Orden Médica:}
+    \[ 0 \leq \text{target\_flow} \leq 200\text{ ml/h} \]
+    \textit{Resultado:} \textbf{APROBADO}. Todas las consignas recibidas y aplicadas se mantuvieron dentro del rango seguro establecido.
+    
+    \item \textbf{No Reanudación tras Alarma Crítica:}
+    Si la bomba ingresa a un estado de alarma crítica y se detiene, no debe reanudar la infusión bajo ninguna circunstancia a menos que se reciba un evento de confirmación del enfermero (`confirmacionEnfermero`) o una nueva orden médica válida.
+    \textit{Resultado:} \textbf{APROBADO}. La traza muestra que la bomba permanece bloqueada y con caudal real cero hasta la llegada de la confirmación médica.
+    
+    \item \textbf{Consistencia de Caudal Cero (Zero flow $\implies$ flow state constant):}
+    Si el caudal objetivo es cero, el estado del flujo no debe fluctuar de manera imprevista.
+    \textit{Resultado:} \textbf{APROBADO} en los escenarios estándar, pero con una observación técnica relevante en el escenario de paciente crítico (analizado en la Sección \ref{sec:analisis_falla}).
+\end{enumerate}
+
+\subsection{Propiedades de Vivacidad (Liveness)}
+Las propiedades de vivacidad garantizan que ``las cosas buenas eventualmente sucedan''.
+
+\begin{enumerate}
+    \item \textbf{Decremento del Tiempo Restante de la Bolsa:}
+    Tras recibir la alarma de fin de bolsa, la variable `bag\_time\_remaining` debe disminuir de forma monótonamente no creciente (sin oscilar ni volver a incrementarse sin una recarga de bolsa confirmada).
+    \textit{Resultado:} \textbf{APROBADO}.
+    
+    \item \textbf{Emisión de Alarma Media por Tolerancia:}
+    Si la tolerancia al desvío de caudal alcanza su límite máximo de 5 segundos, el controlador debe emitir una alarma media sin omisiones.
+    \textit{Resultado:} \textbf{APROBADO}.
+    
+    \item \textbf{Procesamiento de Órdenes Médicas:}
+    Cada evento `ordenMedica` debe provocar eventualmente una acción sobre la bomba (ajuste o detención).
+    \textit{Resultado:} \textbf{APROBADO}.
+\end{enumerate}
+
+\subsection{Propiedades Temporales (Real-Time)}
+Estas propiedades verifican el cumplimiento de las restricciones temporales del diseño físico.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{llcc}
+        \toprule
+        \textbf{Propiedad Temporal} & \textbf{Límite Requerido} & \textbf{Medido} & \textbf{Estado} \\
+        \midrule
+        Inicio de Infusión ($Q > 0$) & $< 3.0\text{ s}$ & $< 0.5\text{ s}$ & \textbf{Cumple} \\
+        Disparo de Alarma Media & $= 5.0\text{ s}$ de desvío & $5.0\text{ s}$ & \textbf{Cumple} \\
+        Detención Automática por Fin Bolsa & $\leq 60.0\text{ s}$ tras aviso & $60.0\text{ s}$ & \textbf{Cumple} \\
+        Repetición de Alarma Crítica & Cada $10.0\text{ s}$ (tras 30s) & $10.0\text{ s}$ & \textbf{Cumple} \\
+        \bottomrule
+    \end{tabular}
+    \caption{Verificación de Requisitos Temporales Críticos.}
+    \label{tab:requisitos_temporales}
+\end{table}
+
+---
+
+\section{Análisis de Desviación y Detalle Técnico}
+\label{sec:analisis_falla}
+Durante la ejecución del validador de propiedades en el escenario de \textbf{Paciente Crítico Alarma}, se detectó un fallo formal reportado en el log:
+\begin{verbatim}
+Verifying: Zero flow => flow state stays constant...
+   - Line 7 (t=69.063): tolerance_count=0.0, target_flow=0.0, 
+     medical_order=0.0, actual_flow=0.0
+\end{verbatim}
+
+\subsubsection{Causa Raíz de la Desviación}
+Este no es un fallo físico en el comportamiento del controlador real de la bomba, sino un artefacto de validación debido a la concurrencia de eventos en el instante de tiempo $t = 69.063\text{ s}$:
+\begin{enumerate}
+    \item A los $69.063\text{ s}$, el enfermero presiona la confirmación. El estado de la alarma pasa de \textit{critical\_alarm} a \textit{no\_alarm}, y el estado del flujo pasa transitoriamente a \textit{normal\_flow} con caudal objetivo $0$ (ya que la bomba estaba detenida).
+    \item En ese mismo instante discreto, se procesa la llegada de una nueva orden médica con caudal objetivo de $150\text{ ml/h}$. El controlador transiciona el estado de flujo a \textit{critical\_flow} (debido a la gran diferencia instantánea inicial entre el caudal real $0$ y el nuevo objetivo $150$ hasta que actúe el retardo físico del actuador).
+    \item El script de verificación evalúa la fila intermedia (donde la orden era $0.0$ y el caudal $0.0$) contra la fila siguiente (donde la orden pasa a $150.0$ y el estado pasa a \textit{critical\_flow}). Debido a que la evaluación se hace línea a línea, el verificador detecta que a partir de una fila con caudal objetivo $0.0$ el estado del flujo cambió de `normal\_flow` a `critical\_flow`, interpretándolo como una violación a la invarianza del estado en reposo.
+\end{enumerate}
+Esta observación recalca la importancia de considerar la precedencia de eventos discretos y las transiciones simultáneas en simulaciones DEVS para evitar falsos positivos en el análisis estático de seguridad.
+
+---
+
+\section{Conclusiones}
+La simulación realizada en PyPDEVS confirma que el controlador de la bomba de infusión diseñado satisface con precisión los requerimientos funcionales y temporalmente exigidos por la especificación:
+\begin{itemize}
+    \item La tasa de infusión correcta se mantiene por encima del \textbf{94\%} incluso en escenarios de falla grave y sobrepasa el \textbf{99.8\%} en monitorizaciones prolongadas.
+    \item Todas las alarmas de seguridad (baja, media y crítica) se disparan en los tiempos estipulados (5 segundos para desvíos de flujo y detención automática exacta a los 60 segundos tras el aviso de fin de bolsa).
+    \item Los mecanismos de mitigación y seguridad del controlador evitan sobredosificaciones y aseguran que la bomba permanezca en un estado de reposo seguro hasta la intervención del personal médico.
+\end{itemize}
+
+\end{document}
