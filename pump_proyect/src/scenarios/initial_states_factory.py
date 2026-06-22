@@ -71,6 +71,42 @@ class InitialStatesFactory:
             states["controller"]["initial_last_sensor_medition"] = 100.0
             states["controller"]["initial_medical_order"] = 120.0
 
+        elif scenario_lower == "orden_medica_cero":
+            states["controller"]["initial_flow_state"] = (FlowState.NORMAL_FLOW, 0.0)
+            states["controller"]["initial_last_sensor_medition"] = 120.0
+            states["controller"]["initial_medical_order"] = 120.0
+            states["actuator"]["initial_currentCaudal"] = 120.0
+            states["actuator"]["initial_status"] = ActuatorStatus.RUNNING
+            states["sensor"]["initial_current_flow"] = 120.0
+            states["med_order"]["initial_sigma"] = 0.0
+            states["med_order"]["initial_order"] = (2, 0)
+            states["med_order"]["initial_hours"] = 2.0
+            states["med_order"]["initial_ml"] = 0.0
+        
+        elif scenario_lower == "fin_bolsa_por_60_segundos":
+            states["controller"]["initial_flow_state"] = (FlowState.NORMAL_FLOW, 0.0)
+            states["controller"]["initial_last_sensor_medition"] = 120.0
+            states["controller"]["initial_medical_order"] = 120.0
+            states["actuator"]["initial_currentCaudal"] = 120.0
+            states["actuator"]["initial_status"] = ActuatorStatus.RUNNING
+            states["sensor"]["initial_current_flow"] = 120.0
+            states["end_bag"]["initial_phase"] = GeneratorBagState.PROGRAMMED
+            states["end_bag"]["initial_hours"] = 0.0
+            states["nurse"]["initial_phase"] = NurseState.IDLE
+            states["nurse"]["initial_sigma"] = 100.0 # more than 60 seconds
+
+        elif scenario_lower == "fin_bolsa_menos_de_60_segundos":
+            states["controller"]["initial_flow_state"] = (FlowState.NORMAL_FLOW, 0.0)
+            states["controller"]["initial_last_sensor_medition"] = 120.0
+            states["controller"]["initial_medical_order"] = 120.0
+            states["actuator"]["initial_currentCaudal"] = 120.0
+            states["actuator"]["initial_status"] = ActuatorStatus.RUNNING
+            states["sensor"]["initial_current_flow"] = 120.0
+            states["end_bag"]["initial_phase"] = GeneratorBagState.PROGRAMMED
+            states["end_bag"]["initial_hours"] = 0.0
+            states["nurse"]["initial_phase"] = NurseState.IDLE
+            states["nurse"]["initial_sigma"] = 10.0 # less than 60 seconds
+
         else:
             raise ValueError(
                 f"Escenario desconocido: '{scenario}'. "

@@ -65,6 +65,20 @@ def main():
             initial_state_name="default",
             duration=36000,
             client_criticality=0.95
+        ),
+
+        Scenario(
+            name="orden_medica_cero",
+            initial_state_name="orden_medica_cero",
+            duration=10000,
+            client_criticality=0.95
+        ),
+
+        Scenario(
+            name="fin_bolsa_por_60_segundos",
+            initial_state_name="fin_bolsa_por_60_segundos",
+            duration=500,
+            client_criticality=0.95
         )
     ]
 

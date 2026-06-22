@@ -1,0 +1,8 @@
+
+Response time for BAG END (low_alarm): no data
+
+Response time for MEDIUM ALARM (medium_alarm): no data
+
+Response time for CRITICAL ALARM (critical_alarm): no data
+
+Theoretical range (gen_nurse.py): random.uniform(5, 75) seconds
