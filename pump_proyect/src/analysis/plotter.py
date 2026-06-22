@@ -240,8 +240,8 @@ def main():
         with open(f"{output_dir}/verify_properties_output.txt", "w") as f:
             subprocess.run(["python", "validators/verify_properties.py", csv_file], stdout=f, stderr=subprocess.STDOUT)
             
-        with open(f"{output_dir}/analyze_nurse_confirmation_output.txt", "w") as f:
-            subprocess.run(["python", "validators/analyze_nurse_confirmation.py", csv_file], stdout=f, stderr=subprocess.STDOUT)
+        with open(f"{output_dir}/result_expected_output.txt", "w") as f:
+            subprocess.run(["python", "validators/result_expected.py", csv_file], stdout=f, stderr=subprocess.STDOUT)
 
     
 
