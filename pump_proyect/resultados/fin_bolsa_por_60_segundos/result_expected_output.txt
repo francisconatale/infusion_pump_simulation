@@ -1,0 +1,30 @@
+======================================================================
+ RESULTADOS DE LA SIMULACIÓN: resultados/fin_bolsa_por_60_segundos/resultados.csv
+======================================================================
+
+1. REGISTRO DE ALARMAS GENERADAS
+----------------------------------------------------------------------
+No se generaron alarmas durante la simulación.
+
+2. TIEMPO DE RESPUESTA ANTE DESVÍOS DE CAUDAL
+----------------------------------------------------------------------
+No se registraron confirmaciones para este tipo de alarmas.
+
+3. TIEMPO DE RESPUESTA ANTE FIN DE BOLSA
+----------------------------------------------------------------------
+No se registraron confirmaciones para este tipo de alarmas.
+
+4. CANTIDAD DE DETENCIONES PREVENTIVAS
+----------------------------------------------------------------------
+Cantidad de detenciones preventivas (stop_pump): 0
+
+5. PORCENTAJE DE TIEMPO CON INFUSIÓN CORRECTA
+----------------------------------------------------------------------
+Tiempo total de simulación evaluado: 497.869 s
+A) Según Caudal Real vs Orden Médica (el paciente recibe lo ordenado):
+   - Tiempo infundiendo correctamente: 497.869 s (100.00%)
+B) Según Caudal Real vs Caudal Objetivo (la bomba cumple su objetivo):
+   - Tiempo infundiendo correctamente: 497.869 s (100.00%)
+C) Según Estado de Flujo (flow_state == normal_flow):
+   - Tiempo en flujo normal:            497.869 s (100.00%)
+======================================================================

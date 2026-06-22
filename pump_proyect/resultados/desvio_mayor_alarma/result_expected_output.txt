@@ -1,0 +1,43 @@
+======================================================================
+ RESULTADOS DE LA SIMULACIÓN: resultados/desvio_mayor_alarma/resultados.csv
+======================================================================
+
+1. REGISTRO DE ALARMAS GENERADAS
+----------------------------------------------------------------------
+Tiempo (s)      | Tipo de Alarma           
+----------------------------------------------------------------------
+8.087           | medium_alarm             
+13.087          | critical_alarm           
+Total de alarmas generadas: 2
+
+2. TIEMPO DE RESPUESTA ANTE DESVÍOS DE CAUDAL
+----------------------------------------------------------------------
+Alarma T (s)    | Confirm. T (s)  | Resp. T (s)  | Tipo           
+----------------------------------------------------------------------
+8.087           | 75.604          | 67.517       | medium_alarm   
+13.087          | 75.604          | 62.517       | critical_alarm 
+----------------------------------------------------------------------
+Estadísticas de respuesta:
+  - Tiempo de respuesta promedio: 65.017 s
+  - Tiempo de respuesta mínimo:   62.517 s
+  - Tiempo de respuesta máximo:   67.517 s
+  - Muestras confirmadas:         2
+
+3. TIEMPO DE RESPUESTA ANTE FIN DE BOLSA
+----------------------------------------------------------------------
+No se registraron confirmaciones para este tipo de alarmas.
+
+4. CANTIDAD DE DETENCIONES PREVENTIVAS
+----------------------------------------------------------------------
+Cantidad de detenciones preventivas (stop_pump): 1
+
+5. PORCENTAJE DE TIEMPO CON INFUSIÓN CORRECTA
+----------------------------------------------------------------------
+Tiempo total de simulación evaluado: 996.678 s
+A) Según Caudal Real vs Orden Médica (el paciente recibe lo ordenado):
+   - Tiempo infundiendo correctamente: 923.483 s (92.66%)
+B) Según Caudal Real vs Caudal Objetivo (la bomba cumple su objetivo):
+   - Tiempo infundiendo correctamente: 923.483 s (92.66%)
+C) Según Estado de Flujo (flow_state == normal_flow):
+   - Tiempo en flujo normal:            929.678 s (93.28%)
+======================================================================

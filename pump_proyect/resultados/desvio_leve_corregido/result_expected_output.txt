@@ -1,0 +1,43 @@
+======================================================================
+ RESULTADOS DE LA SIMULACIÓN: resultados/desvio_leve_corregido/resultados.csv
+======================================================================
+
+1. REGISTRO DE ALARMAS GENERADAS
+----------------------------------------------------------------------
+Tiempo (s)      | Tipo de Alarma           
+----------------------------------------------------------------------
+22.673          | medium_alarm             
+27.673          | critical_alarm           
+Total de alarmas generadas: 2
+
+2. TIEMPO DE RESPUESTA ANTE DESVÍOS DE CAUDAL
+----------------------------------------------------------------------
+Alarma T (s)    | Confirm. T (s)  | Resp. T (s)  | Tipo           
+----------------------------------------------------------------------
+22.673          | 42.940          | 20.267       | medium_alarm   
+27.673          | 42.940          | 15.267       | critical_alarm 
+----------------------------------------------------------------------
+Estadísticas de respuesta:
+  - Tiempo de respuesta promedio: 17.767 s
+  - Tiempo de respuesta mínimo:   15.267 s
+  - Tiempo de respuesta máximo:   20.267 s
+  - Muestras confirmadas:         2
+
+3. TIEMPO DE RESPUESTA ANTE FIN DE BOLSA
+----------------------------------------------------------------------
+No se registraron confirmaciones para este tipo de alarmas.
+
+4. CANTIDAD DE DETENCIONES PREVENTIVAS
+----------------------------------------------------------------------
+Cantidad de detenciones preventivas (stop_pump): 1
+
+5. PORCENTAJE DE TIEMPO CON INFUSIÓN CORRECTA
+----------------------------------------------------------------------
+Tiempo total de simulación evaluado: 997.358 s
+A) Según Caudal Real vs Orden Médica (el paciente recibe lo ordenado):
+   - Tiempo infundiendo correctamente: 876.000 s (87.83%)
+B) Según Caudal Real vs Caudal Objetivo (la bomba cumple su objetivo):
+   - Tiempo infundiendo correctamente: 876.000 s (87.83%)
+C) Según Estado de Flujo (flow_state == normal_flow):
+   - Tiempo en flujo normal:            977.358 s (97.99%)
+======================================================================

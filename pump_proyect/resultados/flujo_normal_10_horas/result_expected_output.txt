@@ -1,0 +1,54 @@
+======================================================================
+ RESULTADOS DE LA SIMULACIÓN: resultados/flujo_normal_10_horas/resultados.csv
+======================================================================
+
+1. REGISTRO DE ALARMAS GENERADAS
+----------------------------------------------------------------------
+Tiempo (s)      | Tipo de Alarma           
+----------------------------------------------------------------------
+8.773           | medium_alarm             
+21358.568       | low_alarm                
+21605.773       | medium_alarm             
+21610.773       | critical_alarm           
+Total de alarmas generadas: 4
+
+2. TIEMPO DE RESPUESTA ANTE DESVÍOS DE CAUDAL
+----------------------------------------------------------------------
+Alarma T (s)    | Confirm. T (s)  | Resp. T (s)  | Tipo           
+----------------------------------------------------------------------
+8.773           | 30.699          | 21.926       | medium_alarm   
+21605.773       | 21666.562       | 60.789       | medium_alarm   
+21610.773       | 21666.562       | 55.789       | critical_alarm 
+----------------------------------------------------------------------
+Estadísticas de respuesta:
+  - Tiempo de respuesta promedio: 46.168 s
+  - Tiempo de respuesta mínimo:   21.926 s
+  - Tiempo de respuesta máximo:   60.789 s
+  - Muestras confirmadas:         3
+
+3. TIEMPO DE RESPUESTA ANTE FIN DE BOLSA
+----------------------------------------------------------------------
+Alarma T (s)    | Confirm. T (s)  | Resp. T (s)  | Tipo           
+----------------------------------------------------------------------
+21358.568       | 21388.895       | 30.327       | low_alarm      
+----------------------------------------------------------------------
+Estadísticas de respuesta:
+  - Tiempo de respuesta promedio: 30.327 s
+  - Tiempo de respuesta mínimo:   30.327 s
+  - Tiempo de respuesta máximo:   30.327 s
+  - Muestras confirmadas:         1
+
+4. CANTIDAD DE DETENCIONES PREVENTIVAS
+----------------------------------------------------------------------
+Cantidad de detenciones preventivas (stop_pump): 1
+
+5. PORCENTAJE DE TIEMPO CON INFUSIÓN CORRECTA
+----------------------------------------------------------------------
+Tiempo total de simulación evaluado: 28797.046 s
+A) Según Caudal Real vs Orden Médica (el paciente recibe lo ordenado):
+   - Tiempo infundiendo correctamente: 28705.046 s (99.68%)
+B) Según Caudal Real vs Caudal Objetivo (la bomba cumple su objetivo):
+   - Tiempo infundiendo correctamente: 28705.046 s (99.68%)
+C) Según Estado de Flujo (flow_state == normal_flow):
+   - Tiempo en flujo normal:            28716.046 s (99.72%)
+======================================================================

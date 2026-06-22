@@ -63,7 +63,7 @@ Dado que las especificaciones de los modelos atómicos y las transiciones ya han
 ---
 
 \section{Escenarios de Simulación y Resultados}
-La simulación fue ejecutada bajo ocho perfiles de configuración de escenarios definidos en el entorno de simulación PyPDEVS. A continuación, se describen detalladamente los objetivos de cada uno, las configuraciones de parámetros y el análisis de los gráficos generados.
+La simulación fue ejecutada bajo once perfiles de configuración de escenarios definidos en el entorno de simulación PyPDEVS. A continuación, se describen detalladamente los objetivos de cada uno, las configuraciones de parámetros y el análisis de los gráficos generados.
 
 \subsection{Perfil 1: Flujo Normal Corto (Normal Operation)}
 \subsubsection{Objetivo y Configuración}
@@ -341,6 +341,132 @@ s): Intervención Temprana del Enfermero.}
         \item Porcentaje de tiempo en flujo normal: \textbf{100.00\%}.
         \item Cantidad de detenciones preventivas: \textbf{0}.
         \item Alarmas generadas: Ninguna.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Perfil 9: Alarma Crítica No Confirmada (Unconfirmed Critical Alarm)}
+\subsubsection{Objetivo y Configuración}
+Este escenario evalúa la capacidad del sistema para cumplir con los requisitos temporales y la vivacidad de las alertas sonoras y visuales cuando una alarma crítica no es confirmada por el personal de enfermería dentro de los primeros 30 segundos. Se parametriza un tiempo de respuesta de enfermero prolongado para forzar el ciclo de repeticiones periódicas de la alarma crítica.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lr}
+        \toprule
+        \textbf{Parámetro} & \textbf{Valor / Rango} \\
+        \midrule
+        Duración de la Simulación & $500\text{ s}$ \\
+        Criticidad del Cliente & $0.95$ \\
+        Estado de Alarma Inicial & Alarma Crítica Activa \\
+        Caudal Inicial & $0.0\text{ ml/h}$ (Detenida) \\
+        Llegada del Enfermero & $41.85\text{ s}$ (Absencia temporal) \\
+        Nueva Orden Médica & $200.0\text{ ml/h}$ (tras confirmación) \\
+        \bottomrule
+    \end{tabular}
+    \caption{Configuración del Escenario de Alarma Crítica No Confirmada.}
+    \label{tab:config_alarma_no_confirmada}
+\end{table}
+
+\subsubsection{Análisis de Gráficos y Métricas}
+\begin{itemize}
+    \item \textbf{Mecanismo de Repetición de Alarma:} El sistema inicia en $t = 0\text{ s}$ con una alarma crítica activa y la bomba bloqueada en estado de seguridad. Como el enfermero reactivo no confirma la alerta dentro de los 30 segundos de seguridad estipulados, el módulo de alarmas emite una renotificación de la alerta crítica a los $t = 30.0\text{ s}$. Tras este primer aviso, y dado que la confirmación sigue sin registrarse, el sistema repite la alarma de forma recurrente cada 10 segundos ($t = 40.0\text{ s}$).
+    
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{images/alarma_critica_no_confirmada_por_mas_30_segundos/alarmas.png}
+        \caption{Perfil 9 (Alarma No Confirmada): Repetición Periódica e Intervención del Enfermero.}
+        \label{fig:alarma_no_confirmada_alarmas}
+    \end{figure}
+
+    \item \textbf{Liberación del Sistema:} En $t = 41.853\text{ s}$, se registra el evento externo \texttt{confirmacionEnfermero}, lo que silencia de inmediato la alarma y desbloquea el controlador. El controlador aplica entonces la orden médica de $200.0\text{ ml/h}$ acumulada, logrando estabilizar el caudal real en $200.0\text{ ml/h}$ tras un breve pico de tolerancia resuelto en $t = 48.232\text{ s}$.
+    \item \textbf{Métricas Clave:}
+    \begin{itemize}
+        \item Porcentaje de infusión correcta: \textbf{98.72\%} del tiempo total.
+        \item Cantidad de detenciones preventivas: \textbf{0} (el sistema inicia ya bloqueado).
+        \item Tiempo de respuesta del enfermero: \textbf{41.853\text{ s}}.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Perfil 10: Desvío Leve Corregido (Slight Flow Deviation Corrected)}
+\subsubsection{Objetivo y Configuración}
+Este perfil analiza la respuesta del lazo de control cerrado y el comportamiento del contador de tolerancia discreto ante fluctuaciones transitorias leves y desvíos estocásticos autolimitados en el caudal real. Se verifica que el controlador intente corregir la anomalía antes de desencadenar alarmas y que logre estabilizar la tasa si la falla remite.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lr}
+        \toprule
+        \textbf{Parámetro} & \textbf{Valor / Rango} \\
+        \midrule
+        Duración de la Simulación & $1000\text{ s}$ \\
+        Criticidad del Cliente & $0.95$ \\
+        Caudal Inicial & $89.0\text{ ml/h}$ \\
+        Orden Médica Inicial & $100.0\text{ ml/h}$ \\
+        Tolerancia Inicial (tol) & $2.0$ \\
+        Llegada del Enfermero & $42.94\text{ s}$ \\
+        \bottomrule
+    \end{tabular}
+    \caption{Configuración del Escenario de Desvío Leve Corregido.}
+    \label{tab:config_desvio_leve}
+\end{table}
+
+\subsubsection{Análisis de Gráficos y Métricas}
+\begin{itemize}
+    \item \textbf{Ajuste del Controlador y Alarma:} El sistema arranca con un caudal de $89.0\text{ ml/h}$ contra una orden de $100.0\text{ ml/h}$ (desvío del 11.0\%, superando el 10\% tolerable). A los $t = 3.673\text{ s}$, el lazo incrementa el caudal real a $90.555\text{ ml/h}$ (desvío de 9.44\%, menor al 10\%), lo que provoca que el controlador reinicie el contador de tolerancia a 0 de forma segura.
+    
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{images/desvio_leve_corregido/flujo.png}
+        \caption{Perfil 10 (Desvío Leve): Fluctuación de Caudal y Corrección Tardía.}
+        \label{fig:desvio_leve_flujo}
+    \end{figure}
+
+    \item \textbf{Inestabilidad Estocástica y Parada:} En $t = 17.673\text{ s}$, una perturbación simula una elevación del caudal a $117.542\text{ ml/h}$ (17.5\% de desvío). El controlador acumula tolerancia de forma consecutiva durante 5 segundos y dispara una \textit{alarmaMedia} en $t = 22.673\text{ s}$. Ante la persistencia estocástica de la diferencia de caudal, se emite una \textit{alarmaCritica} y se detiene la bomba en $t = 27.673\text{ s}$.
+    \item \textbf{Recuperación:} Tras la confirmación del enfermero en $t = 42.940\text{ s}$, la bomba se reactiva y el lazo de control estabiliza el caudal real exactamente en $99.940\text{ ml/h}$ (desvío $<0.1\%$) para el resto de la simulación.
+    \item \textbf{Métricas Clave:}
+    \begin{itemize}
+        \item Porcentaje de infusión correcta: \textbf{87.83\%} del tiempo total.
+        \item Cantidad de detenciones preventivas: \textbf{1} (detención por alarma crítica).
+        \item Tiempo de respuesta del enfermero: \textbf{17.767\text{ s}} promedio.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Perfil 11: Desvío Mayor Alarma (Large Flow Deviation - Alarm and Stop)}
+\subsubsection{Objetivo y Configuración}
+Este escenario evalúa la robustez del sistema ante fallas de hardware catastróficas y permanentes (como una obstrucción total del conducto o una falla mecánica del actuador), donde el caudal real desciende drásticamente a $0\text{ ml/h}$ bajo una orden de infusión alta de $200.0\text{ ml/h}$.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lr}
+        \toprule
+        \textbf{Parámetro} & \textbf{Valor / Rango} \\
+        \midrule
+        Duración de la Simulación & $1000\text{ s}$ \\
+        Criticidad del Cliente & $0.95$ \\
+        Caudal Inicial & $0.0\text{ ml/h}$ \\
+        Orden Médica Inicial & $200.0\text{ ml/h}$ \\
+        Llegada del Enfermero & $75.60\text{ s}$ \\
+        \bottomrule
+    \end{tabular}
+    \caption{Configuración del Escenario de Desvío Mayor y Alarma.}
+    \label{tab:config_desvio_mayor}
+\end{table}
+
+\subsubsection{Análisis de Gráficos y Métricas}
+\begin{itemize}
+    \item \textbf{Detección Inmediata y Parada por Seguridad:} Al arrancar, el controlador detecta que el caudal medido es $0\text{ ml/h}$ en lugar de los $200.0\text{ ml/h}$ ordenados (100\% de desvío). El contador de tolerancia discreto acumula consecutivamente y alcanza su máximo de 5 a los 5 segundos de medición, disparando la \textit{alarmaMedia} en $t = 8.087\text{ s}$ y la \textit{alarmaCritica} con detención física de la bomba (\texttt{stop\_pump}) en $t = 13.087\text{ s}$.
+    
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{images/desvio_mayor_alarma/flujo.png}
+        \caption{Perfil 11 (Desvío Mayor): Caída de Caudal, Alarma y Detención de Seguridad.}
+        \label{fig:desvio_mayor_flujo}
+    \end{figure}
+
+    \item \textbf{Ciclo de Alertas y Estabilización:} Al no confirmarse de inmediato, la alarma crítica se repite en $t = 43.087\text{ s}$ (30 segundos de retardo) y posteriormente en $t = 53.087\text{ s}$, $t = 63.087\text{ s}$ y $t = 73.087\text{ s}$ (cada 10 segundos). Tras la intervención del enfermero en $t = 75.604\text{ s}$, la alarma es silenciada y el caudal es restaurado rápidamente a $200.0\text{ ml/h}$ estables.
+    \item \textbf{Métricas Clave:}
+    \begin{itemize}
+        \item Porcentaje de infusión correcta: \textbf{92.66\%} del tiempo total.
+        \item Cantidad de detenciones preventivas: \textbf{1}.
+        \item Tiempo de respuesta del enfermero: \textbf{65.017\text{ s}} promedio.
     \end{itemize}
 \end{itemize}
 

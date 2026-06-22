@@ -90,8 +90,27 @@ def main():
 
         Scenario(
             name="fin_bolsa_menos_de_60_segundos",
-            initial_state_name="fin_bolsa_por_60_segundos",
+            initial_state_name="fin_bolsa_menos_de_60_segundos",
             duration=500,
+            client_criticality=0.95
+        ),
+        Scenario(
+            name= "alarma_critica_no_confirmada_por_mas_30_segundos",
+            initial_state_name="alarma_critica_no_confirmada_por_mas_30_segundos",
+            duration = 500,
+            client_criticality=0.95),
+            
+        Scenario(
+            name="desvio_leve_corregido",
+            initial_state_name="desvio_leve_corregido",
+            duration=1000,
+            client_criticality=0.95
+        ),
+
+        Scenario(
+            name="desvio_mayor_alarma",
+            initial_state_name="desvio_mayor_alarma",
+            duration=1000,
             client_criticality=0.95
         )
     ]

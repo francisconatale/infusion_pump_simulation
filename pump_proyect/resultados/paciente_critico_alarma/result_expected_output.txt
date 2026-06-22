@@ -1,0 +1,45 @@
+======================================================================
+ RESULTADOS DE LA SIMULACIÓN: resultados/paciente_critico_alarma/resultados.csv
+======================================================================
+
+1. REGISTRO DE ALARMAS GENERADAS
+----------------------------------------------------------------------
+Tiempo (s)      | Tipo de Alarma           
+----------------------------------------------------------------------
+0.000           | critical_alarm           
+56.444          | medium_alarm             
+61.444          | critical_alarm           
+Total de alarmas generadas: 3
+
+2. TIEMPO DE RESPUESTA ANTE DESVÍOS DE CAUDAL
+----------------------------------------------------------------------
+Alarma T (s)    | Confirm. T (s)  | Resp. T (s)  | Tipo           
+----------------------------------------------------------------------
+0.000           | 46.508          | 46.508       | critical_alarm 
+56.444          | 71.586          | 15.142       | medium_alarm   
+61.444          | 71.586          | 10.142       | critical_alarm 
+----------------------------------------------------------------------
+Estadísticas de respuesta:
+  - Tiempo de respuesta promedio: 23.931 s
+  - Tiempo de respuesta mínimo:   10.142 s
+  - Tiempo de respuesta máximo:   46.508 s
+  - Muestras confirmadas:         3
+
+3. TIEMPO DE RESPUESTA ANTE FIN DE BOLSA
+----------------------------------------------------------------------
+No se registraron confirmaciones para este tipo de alarmas.
+
+4. CANTIDAD DE DETENCIONES PREVENTIVAS
+----------------------------------------------------------------------
+Cantidad de detenciones preventivas (stop_pump): 1
+
+5. PORCENTAJE DE TIEMPO CON INFUSIÓN CORRECTA
+----------------------------------------------------------------------
+Tiempo total de simulación evaluado: 499.444 s
+A) Según Caudal Real vs Orden Médica (el paciente recibe lo ordenado):
+   - Tiempo infundiendo correctamente: 436.508 s (87.40%)
+B) Según Caudal Real vs Caudal Objetivo (la bomba cumple su objetivo):
+   - Tiempo infundiendo correctamente: 436.508 s (87.40%)
+C) Según Estado de Flujo (flow_state == normal_flow):
+   - Tiempo en flujo normal:            479.508 s (96.01%)
+======================================================================

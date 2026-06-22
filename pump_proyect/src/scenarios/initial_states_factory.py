@@ -68,6 +68,9 @@ class InitialStatesFactory:
             "orden_medica_cambio": InitialStatesFactory._apply_orden_medica_cambio,
             "fin_bolsa_por_60_segundos": InitialStatesFactory._apply_fin_bolsa_por_60_segundos,
             "fin_bolsa_menos_de_60_segundos": InitialStatesFactory._apply_fin_bolsa_menos_de_60_segundos,
+            "alarma_critica_no_confirmada_por_mas_30_segundos": InitialStatesFactory._apply_alarma_critica_no_confirmada_por_mas_30_segundos,
+            "desvio_leve_corregido": InitialStatesFactory._apply_desvio_leve_corregido,
+            "desvio_mayor_alarma": InitialStatesFactory._apply_desvio_mayor_alarma
         }
 
         modifier = scenario_modifiers.get(scenario_lower)
@@ -97,6 +100,11 @@ class InitialStatesFactory:
         states["controller"]["initial_flow_state"] = (FlowState.NORMAL_FLOW, 4.0)
         states["controller"]["initial_last_sensor_medition"] = 100.0
         states["controller"]["initial_medical_order"] = 120.0
+        states["actuator"]["initial_currentCaudal"] = 100.0
+        states["actuator"]["initial_status"] = ActuatorStatus.RUNNING
+        states["sensor"]["initial_current_flow"] = 100.0
+        states["med_order"]["initial_sigma"] = 0.0
+        states["med_order"]["initial_order"] = (2, 120.0)
 
     @staticmethod
     def _apply_orden_medica_cero(states: Dict[str, Any]) -> None:
@@ -132,8 +140,43 @@ class InitialStatesFactory:
         states["end_bag"]["initial_hours"] = 0.0
         states["nurse"]["initial_phase"] = NurseState.IDLE
         states["nurse"]["initial_sigma"] = 100.0  # more than 60 seconds
+        states["med_order"]["initial_sigma"] = 0.0
+        states["med_order"]["initial_order"] = (2, 120.0)
 
     @staticmethod
     def _apply_fin_bolsa_menos_de_60_segundos(states: Dict[str, Any]) -> None:
+        InitialStatesFactory._apply_fin_bolsa_por_60_segundos(states)
         states["nurse"]["initial_phase"] = NurseState.IDLE
-        states["nurse"]["initial_sigma"] = 10.0  # less than 60 seconds
+        states["nurse"]["initial_sigma"] = 10.0  # less than 60 second
+
+    @staticmethod
+    def _apply_alarma_critica_no_confirmada_por_mas_30_segundos(states: Dict[str, Any]) -> None:
+        states["alarm"]["initial_alarm_state"] = AlarmStatus.CRITICAL_ALARM
+        states["alarm"]["initial_hours"] = 0.0   
+        states["actuator"]["initial_status"] = ActuatorStatus.IDLE
+        states["controller"]["initial_flow_state"] = (FlowState.CRITICAL_FLOW, 5.0)
+        states["nurse"]["initial_phase"] = NurseState.IDLE
+        states["nurse"]["initial_sigma"] = 35.0  
+
+    @staticmethod
+    def _apply_desvio_leve_corregido(states: Dict[str, Any]) -> None:
+        states["controller"]["initial_flow_state"] = (FlowState.NORMAL_FLOW, 2.0)
+        states["controller"]["initial_last_sensor_medition"] = 89.0
+        states["controller"]["initial_medical_order"] = 100.0
+        states["actuator"]["initial_currentCaudal"] = 89.0
+        states["actuator"]["initial_status"] = ActuatorStatus.RUNNING
+        states["sensor"]["initial_current_flow"] = 89.0
+        states["med_order"]["initial_sigma"] = 0.0
+        states["med_order"]["initial_order"] = (2, 100.0)
+
+    @staticmethod
+    def _apply_desvio_mayor_alarma(states: Dict[str, Any]) -> None:
+        states["controller"]["initial_flow_state"] = (FlowState.NORMAL_FLOW, 0.0)
+        states["controller"]["initial_last_sensor_medition"] = 0.0
+        states["controller"]["initial_medical_order"] = 200.0
+        states["actuator"]["initial_currentCaudal"] = 0.0
+        states["actuator"]["initial_status"] = ActuatorStatus.RUNNING
+        states["sensor"]["initial_current_flow"] = 0.0
+        states["med_order"]["initial_sigma"] = 0.0
+        states["med_order"]["initial_order"] = (2, 200.0)
+
