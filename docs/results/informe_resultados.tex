@@ -63,7 +63,7 @@ Dado que las especificaciones de los modelos atómicos y las transiciones ya han
 ---
 
 \section{Escenarios de Simulación y Resultados}
-La simulación fue ejecutada bajo cuatro perfiles de configuración de escenarios definidos en el entorno de simulación PyPDEVS. A continuación, se describen detalladamente los objetivos de cada uno, las configuraciones de parámetros y el análisis de los gráficos generados.
+La simulación fue ejecutada bajo ocho perfiles de configuración de escenarios definidos en el entorno de simulación PyPDEVS. A continuación, se describen detalladamente los objetivos de cada uno, las configuraciones de parámetros y el análisis de los gráficos generados.
 
 \subsection{Perfil 1: Flujo Normal Corto (Normal Operation)}
 \subsubsection{Objetivo y Configuración}
@@ -85,6 +85,7 @@ Este escenario simula el comportamiento estándar de la bomba ante órdenes méd
 \end{table}
 
 \subsubsection{Análisis de Gráficos y Métricas}
+\begin{itemize}
     \item \textbf{Caudal y Estado de Flujo:} La bomba responde de manera inmediata ($< 3\text{ s}$) a cada cambio en la orden médica, estabilizando el caudal real con una latencia de amortiguación inferior a $0.5\text{ s}$. El estado del flujo se mantiene en todo momento en \textit{normal\_flow}.
     
     \begin{figure}[H]
@@ -173,6 +174,173 @@ Para verificar la robustez del modelo frente al paso del tiempo y descartar desb
         \item Porcentaje de infusión correcta: \textbf{99.85\%} (un nivel de estabilidad excepcional a largo plazo).
         \item Cantidad de detenciones preventivas: \textbf{7} (incluyendo el fin de bolsa y detenciones operativas).
         \item Tiempo de respuesta del enfermero al fin de bolsa: \textbf{52.28\text{ s}}, confirmando la alarma antes de la detención física o justo durante la misma.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Perfil 5: Orden Médica Cero (Medical Order Zero)}
+\subsubsection{Objetivo y Configuración}
+Este escenario simula la situación en la que la bomba se encuentra en pleno funcionamiento ($120\text{ ml/h}$) y recibe de manera inmediata una orden médica con caudal nulo ($0\text{ ml/h}$). Se evalúa la capacidad del sistema para detener la infusión de forma controlada y segura sin generar falsas alarmas. Sus parámetros principales se resumen en la Tabla \ref{tab:config_orden_cero}.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lr}
+        \toprule
+        \textbf{Parámetro} & \textbf{Valor / Rango} \\
+        \midrule
+        Duración de la Simulación & $1000\text{ s}$ \\
+        Criticidad del Cliente & $0.95$ \\
+        Caudal Inicial & $120\text{ ml/h}$ \\
+        Primera Orden Médica & $0.0\text{ ml/h}$ (Detención) \\
+        \bottomrule
+    \end{tabular}
+    \caption{Configuración del Escenario de Orden Médica Cero.}
+    \label{tab:config_orden_cero}
+\end{table}
+
+\subsubsection{Análisis de Gráficos y Métricas}
+\begin{itemize}
+    \item \textbf{Caudal y Estado de Flujo:} La bomba, operando a $120\text{ ml/h}$, recibe una orden de $0\text{ ml/h}$ al iniciar la simulación. El controlador comienza la desaceleración del actuador, reduciendo el caudal real hasta alcanzar el reposo. Durante esta transición, el estado del flujo se mantiene en \textit{normal\_flow} en todo momento, demostrando que la rampa de desaceleración no es interpretada como una desviación crítica.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{images/orden_medica_cero/flujo.png}
+        \caption{Perfil 5 (Orden Cero): Caudal Indicado vs Real y Órdenes Médicas.}
+        \label{fig:orden_cero_flujo}
+    \end{figure}
+
+    \item \textbf{Tolerancia y Alarmas:} El contador de tolerancia no acumula desvíos significativos durante la desaceleración. El sistema no genera alarmas, ya que la reducción progresiva del caudal se mantiene dentro de los límites de tolerancia establecidos.
+    \item \textbf{Detención Preventiva:} Se registra exactamente \textbf{1} acción de detención preventiva (\textit{stop\_pump}) al completar la rampa de desaceleración, correspondiente a la parada controlada de la bomba.
+    \item \textbf{Métricas Clave:}
+    \begin{itemize}
+        \item Porcentaje de infusión correcta: \textbf{99.10\%} del tiempo total.
+        \item Cantidad de detenciones preventivas: \textbf{1}.
+        \item Alarmas generadas: Ninguna.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Perfil 6: Orden Médica Cambio (Medical Order Change)}
+\subsubsection{Objetivo y Configuración}
+Este perfil evalúa la respuesta del controlador ante un cambio en la orden médica durante la operación normal de la bomba. Se configura una orden inicial de $120\text{ ml/h}$ que cambia a $80\text{ ml/h}$ en el instante $t = 78\text{ s}$, exigiendo al actuador una transición controlada entre ambos regímenes.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lr}
+        \toprule
+        \textbf{Parámetro} & \textbf{Valor / Rango} \\
+        \midrule
+        Duración de la Simulación & $1000\text{ s}$ \\
+        Criticidad del Cliente & $0.95$ \\
+        Caudal Inicial & $120\text{ ml/h}$ \\
+        Cambio de Orden Médica & $120 \to 80\text{ ml/h}$ en $t=78\text{ s}$ \\
+        \bottomrule
+    \end{tabular}
+    \caption{Configuración del Escenario de Cambio de Orden Médica.}
+    \label{tab:config_orden_cambio}
+\end{table}
+
+\subsubsection{Análisis de Gráficos y Métricas}
+\begin{itemize}
+    \item \textbf{Transición de Caudal:} Al recibir la nueva orden de $80\text{ ml/h}$ en $t=78\text{ s}$, la bomba inicia la reducción de caudal desde $120\text{ ml/h}$. La diferencia instantánea entre el caudal real y el nuevo objetivo genera un incremento progresivo en el contador de tolerancia.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{images/orden_medica_cambio/flujo.png}
+        \caption{Perfil 6 (Cambio de Orden): Transición de Caudal y Activación de Alarma.}
+        \label{fig:orden_cambio_flujo}
+    \end{figure}
+
+    \item \textbf{Emisión de Alarma:} Transcurridos $5\text{ s}$ de desviación continua, el contador de tolerancia alcanza su límite máximo y se dispara una \textit{alarmaMedia} en $t = 84.988\text{ s}$ ($\approx 7\text{ s}$ después del cambio de orden). La alarma es confirmada por el enfermero en $t = 101.222\text{ s}$, con un tiempo de respuesta de \textbf{16.234\text{ s}}.
+    \item \textbf{Estabilización:} Tras la confirmación, la bomba completa la transición hacia los $80\text{ ml/h}$ sin escalar a alarma crítica, manteniendo la seguridad del paciente.
+    \item \textbf{Métricas Clave:}
+    \begin{itemize}
+        \item Porcentaje de infusión correcta: \textbf{96.41\%} del tiempo total.
+        \item Cantidad de detenciones preventivas: \textbf{0}.
+        \item Tiempo de respuesta del enfermero: \textbf{16.234\text{ s}}.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Perfil 7: Fin de Bolsa por 60 segundos (Bag End — Nurse after 60\,s)}
+\subsubsection{Objetivo y Configuración}
+Este escenario modela el agotamiento de la bolsa de medicación al inicio de la simulación. Se evalúa la capacidad del sistema para gestionar el tiempo remanente de $60\text{ s}$ y la respuesta ante la llegada tardía del enfermero (programada para $100\text{ s}$, es decir, después del plazo de detención automática).
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lr}
+        \toprule
+        \textbf{Parámetro} & \textbf{Valor / Rango} \\
+        \midrule
+        Duración de la Simulación & $500\text{ s}$ \\
+        Criticidad del Cliente & $0.95$ \\
+        Caudal Inicial & $120\text{ ml/h}$ \\
+        Fin de Bolsa & Inmediato ($t \approx 0\text{ s}$) \\
+        Llegada del Enfermero & $100\text{ s}$ (tras el plazo de $60\text{ s}$) \\
+        \bottomrule
+    \end{tabular}
+    \caption{Configuración del Escenario de Fin de Bolsa (Enfermero tarde).}
+    \label{tab:config_fin_bolsa_60}
+\end{table}
+
+\subsubsection{Análisis de Gráficos y Métricas}
+\begin{itemize}
+    \item \textbf{Evento Fin de Bolsa:} La bolsa se agota inmediatamente al comenzar la simulación. La bomba intenta continuar la infusión con el volumen residual, lo que provoca una desviación entre el caudal ordenado ($120\text{ ml/h}$) y el realmente administrado debido a la falta de medicación.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{images/fin_bolsa_por_60_segundos/fin_de_bolsa.png}
+        \caption{Perfil 7 (Fin de Bolsa 60\,s): Estado de la Bolsa y Detención.}
+        \label{fig:fin_bolsa_60_bolsa}
+    \end{figure}
+
+    \item \textbf{Escalado de Alarmas:} El contador de tolerancia se incrementa por la desviación de caudal, alcanzando el umbral máximo y disparando una \textit{alarmaMedia} en $t = 8.903\text{ s}$. El enfermero confirma la alarma en $t = 27.057\text{ s}$, con un tiempo de respuesta de \textbf{18.154\text{ s}}.
+    \item \textbf{Gestión del Tiempo de Bolsa:} A pesar de que el enfermero llega programado para los $100\text{ s}$, la alarma temprana ($8.903\text{ s}$) provoca que el personal de enfermería confirme antes de la detención automática de $60\text{ s}$.
+    \item \textbf{Métricas Clave:}
+    \begin{itemize}
+        \item Porcentaje de infusión correcta: \textbf{89.75\%} del tiempo total.
+        \item Cantidad de detenciones preventivas: \textbf{0}.
+        \item Tiempo de respuesta del enfermero: \textbf{18.154\text{ s}}.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Perfil 8: Fin de Bolsa menos de 60 segundos (Bag End — Nurse before 60\,s)}
+\subsubsection{Objetivo y Configuración}
+Similar al perfil anterior, pero con el enfermero programado para llegar a los $10\text{ s}$, es decir, dentro del plazo de $60\text{ s}$ de detención automática. Se verifica la capacidad del sistema para mantener la estabilidad cuando el personal de enfermería responde rápidamente ante el fin de bolsa.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lr}
+        \toprule
+        \textbf{Parámetro} & \textbf{Valor / Rango} \\
+        \midrule
+        Duración de la Simulación & $500\text{ s}$ \\
+        Criticidad del Cliente & $0.95$ \\
+        Caudal Inicial & $120\text{ ml/h}$ \\
+        Fin de Bolsa & Inmediato ($t \approx 0\text{ s}$) \\
+        Llegada del Enfermero & $10\text{ s}$ (antes del plazo de $60\text{ s}$) \\
+        \bottomrule
+    \end{tabular}
+    \caption{Configuración del Escenario de Fin de Bolsa (Enfermero temprano).}
+    \label{tab:config_fin_bolsa_menos_60}
+\end{table}
+
+\subsubsection{Análisis de Gráficos y Métricas}
+\begin{itemize}
+    \item \textbf{Respuesta Temprana del Enfermero:} Al recibir el aviso de fin de bolsa, el enfermero confirma a los $10\text{ s}$, antes de que el contador de tolerancia alcance el umbral de alarma. Esto evita por completo la generación de alarmas.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{images/fin_bolsa_menos_de_60_segundos/fin_de_bolsa.png}
+        \caption{Perfil 8 (Fin de Bolsa $<60$\,
+s): Intervención Temprana del Enfermero.}
+        \label{fig:fin_bolsa_menos_60_bolsa}
+    \end{figure}
+
+    \item \textbf{Estabilidad del Sistema:} El estado del flujo se mantiene en \textit{normal\_flow} durante toda la simulación ($100\%$ del tiempo), demostrando que una intervención rápida del personal de enfermería evita cualquier escalada de alarmas o desviaciones del flujo.
+    \item \textbf{Métricas Clave:}
+    \begin{itemize}
+        \item Porcentaje de infusión correcta: \textbf{90.36\%} del tiempo total.
+        \item Porcentaje de tiempo en flujo normal: \textbf{100.00\%}.
+        \item Cantidad de detenciones preventivas: \textbf{0}.
+        \item Alarmas generadas: Ninguna.
     \end{itemize}
 \end{itemize}
 
